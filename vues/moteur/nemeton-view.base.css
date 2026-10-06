@@ -1,0 +1,240 @@
+/*
+ * nemeton-view.css — charte commune des vues nemeton.
+ *
+ * Atlas forestier : papier vert-de-gris, encre de carte, un seul vert
+ * d'action (#1B6B1B), l'ambre (#E8A33D) réservé aux contenus générés par IA.
+ * Chiffres en mono tabulaire. Thème clair et sombre au niveau des jetons.
+ */
+:root {
+  --nv-fond: #f3f5f0;
+  --nv-surface: #fbfcf9;
+  --nv-surface-2: #eaeee6;
+  --nv-encre: #17211b;
+  --nv-encre-2: #4b584f;
+  --nv-encre-3: #6c786f;
+  --nv-trait: #d3dacf;
+  --nv-carte: #e9ede4;
+  --nv-action: #1b6b1b;
+  --nv-action-texte: #ffffff;
+  --nv-action-encre: #1b6b1b;
+  --nv-action-voile: rgba(27, 107, 27, 0.12);
+  --nv-choisie: #1b6b1b;
+  --nv-ia: #e8a33d;
+  --nv-ia-encre: #8a5a10;
+  --nv-ia-voile: rgba(232, 163, 61, 0.14);
+  --nv-alerte: #b3261e;
+  --nv-foret: rgba(46, 125, 50, 0.16);
+  --nv-parcelle: #8b958c;
+  --nv-section: #5b665e;
+  --nv-commune: #2c3a31;
+  --nv-eau: #4a86b8;
+  --nv-route: #a99f8e;
+  --nv-manquant-fond: #d9dcd6;
+  --nv-manquant-trait: #8a9088;
+  --nv-ombre: 0 1px 2px rgba(20, 33, 26, 0.08), 0 4px 16px rgba(20, 33, 26, 0.06);
+
+  --nv-police-titre: "Spectral", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --nv-police-texte: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --nv-police-chiffres: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --nv-r: 6px;
+  --nv-gouttiere: 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --nv-fond: #101612;
+    --nv-surface: #172019;
+    --nv-surface-2: #1f2a22;
+    --nv-encre: #e4ebe4;
+    --nv-encre-2: #b0bdb2;
+    --nv-encre-3: #8d9a90;
+    --nv-trait: #2d3a30;
+    --nv-carte: #0c110e;
+    --nv-action-encre: #7cc47c;
+    --nv-action-voile: rgba(124, 196, 124, 0.16);
+    --nv-choisie: #4fa84f;
+    --nv-ia-encre: #f0bd6e;
+    --nv-ia-voile: rgba(232, 163, 61, 0.16);
+    --nv-alerte: #f2948d;
+    --nv-foret: rgba(124, 196, 124, 0.14);
+    --nv-parcelle: #6d7a70;
+    --nv-section: #9aa79c;
+    --nv-commune: #cfd9d0;
+    --nv-eau: #6aa5d6;
+    --nv-route: #6f6a60;
+    --nv-manquant-fond: #2b312c;
+    --nv-manquant-trait: #5d665f;
+    --nv-ombre: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.3);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --nv-fond: #101612;
+  --nv-surface: #172019;
+  --nv-surface-2: #1f2a22;
+  --nv-encre: #e4ebe4;
+  --nv-encre-2: #b0bdb2;
+  --nv-encre-3: #8d9a90;
+  --nv-trait: #2d3a30;
+  --nv-carte: #0c110e;
+  --nv-action-encre: #7cc47c;
+  --nv-action-voile: rgba(124, 196, 124, 0.16);
+  --nv-choisie: #4fa84f;
+  --nv-ia-encre: #f0bd6e;
+  --nv-ia-voile: rgba(232, 163, 61, 0.16);
+  --nv-alerte: #f2948d;
+  --nv-foret: rgba(124, 196, 124, 0.14);
+  --nv-parcelle: #6d7a70;
+  --nv-section: #9aa79c;
+  --nv-commune: #cfd9d0;
+  --nv-eau: #6aa5d6;
+  --nv-route: #6f6a60;
+  --nv-manquant-fond: #2b312c;
+  --nv-manquant-trait: #5d665f;
+  --nv-ombre: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.3);
+  color-scheme: dark;
+}
+
+/* ------------------------------------------------------------ socle */
+
+html, body { height: 100%; }
+body {
+  background: var(--nv-fond);
+  color: var(--nv-encre);
+  font: 15px/1.5 var(--nv-police-texte);
+  -webkit-font-smoothing: antialiased;
+}
+.nv-app {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+}
+.nv-app > *, .nv-app main > * { min-width: 0; }
+h1, h2, h3 { font-family: var(--nv-police-titre); font-weight: 600; text-wrap: balance; margin: 0; }
+.nv-chiffre, .nv-num { font-family: var(--nv-police-chiffres); font-variant-numeric: tabular-nums; }
+.nv-etiquette {
+  font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--nv-encre-3); font-weight: 700;
+}
+.nv-muet { color: var(--nv-encre-2); }
+:focus-visible { outline: 2px solid var(--nv-action-encre); outline-offset: 2px; }
+
+/* ------------------------------------------------------------ en-tête */
+
+.nv-entete {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px;
+  padding: 10px var(--nv-gouttiere);
+  background: var(--nv-surface);
+  border-bottom: 1px solid var(--nv-trait);
+}
+.nv-entete__titre { display: flex; flex-direction: column; min-width: 0; flex: 1 1 260px; }
+.nv-entete__titre h1 { font-size: 22px; line-height: 1.15; }
+.nv-entete__outils { display: flex; align-items: center; gap: 8px; }
+
+/* ------------------------------------------------------------ contrôles */
+
+.nv-bouton {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 36px; padding: 6px 14px;
+  font: 600 14px/1 var(--nv-police-texte);
+  color: var(--nv-encre); background: var(--nv-surface);
+  border: 1px solid var(--nv-trait); border-radius: var(--nv-r);
+  cursor: pointer;
+}
+.nv-bouton:hover { background: var(--nv-surface-2); }
+.nv-bouton:disabled { opacity: 0.5; cursor: not-allowed; }
+.nv-bouton--action { background: var(--nv-action); color: var(--nv-action-texte); border-color: var(--nv-action); }
+.nv-bouton--action:hover { background: #155615; }
+.nv-bouton--discret { border-color: transparent; background: transparent; color: var(--nv-encre-2); }
+.nv-bouton--discret:hover { background: var(--nv-surface-2); }
+.nv-bouton[aria-pressed="true"] { background: var(--nv-action-voile); border-color: var(--nv-action-encre); color: var(--nv-action-encre); }
+.nv-bouton svg { width: 16px; height: 16px; }
+
+.nv-champ {
+  width: 100%; min-height: 36px; padding: 6px 10px;
+  font: 14px/1.3 var(--nv-police-texte);
+  color: var(--nv-encre); background: var(--nv-surface);
+  border: 1px solid var(--nv-trait); border-radius: var(--nv-r);
+}
+.nv-champ::placeholder { color: var(--nv-encre-3); }
+
+.nv-bascule { display: inline-flex; border: 1px solid var(--nv-trait); border-radius: var(--nv-r); overflow: hidden; }
+.nv-bascule button {
+  border: 0; background: var(--nv-surface); color: var(--nv-encre-2);
+  font: 700 12px/1 var(--nv-police-texte); letter-spacing: 0.06em; padding: 8px 10px; cursor: pointer;
+}
+.nv-bascule button[aria-pressed="true"] { background: var(--nv-encre); color: var(--nv-surface); }
+
+.nv-statut { min-height: 1.4em; font-size: 13px; color: var(--nv-encre-2); }
+.nv-alerte {
+  padding: 10px 12px; border-radius: var(--nv-r);
+  border: 1px solid var(--nv-alerte); color: var(--nv-alerte); background: transparent; font-size: 14px;
+}
+
+/* ------------------------------------------------------------ carte */
+
+.nv-carte { position: relative; min-height: 0; min-width: 0; background: var(--nv-carte); }
+.nv-carte .leaflet-container { background: var(--nv-carte); font-family: var(--nv-police-texte); }
+.nv-carte .leaflet-control-attribution {
+  background: color-mix(in srgb, var(--nv-surface) 85%, transparent);
+  color: var(--nv-encre-3); font-size: 10px;
+}
+.nv-carte .leaflet-control-zoom a {
+  background: var(--nv-surface); color: var(--nv-encre); border-color: var(--nv-trait);
+}
+.nv-carte .leaflet-bar { border-color: var(--nv-trait); box-shadow: var(--nv-ombre); }
+.nv-infobulle.leaflet-tooltip {
+  background: var(--nv-surface); color: var(--nv-encre);
+  border: 1px solid var(--nv-trait); border-radius: var(--nv-r); box-shadow: var(--nv-ombre);
+  font: 13px/1.35 var(--nv-police-texte); padding: 6px 9px;
+}
+.nv-infobulle.leaflet-tooltip::before { display: none; }
+.nv-legende {
+  position: absolute; z-index: 800; left: 12px; bottom: 22px;
+  max-width: calc(100% - 24px);
+  background: var(--nv-surface); border: 1px solid var(--nv-trait); border-radius: var(--nv-r);
+  box-shadow: var(--nv-ombre); padding: 8px 10px; font-size: 12px;
+}
+.nv-degrade { height: 10px; width: 180px; max-width: 100%; border-radius: 2px; }
+.nv-legende__echelle { display: flex; justify-content: space-between; width: 180px; max-width: 100%; }
+
+/* ------------------------------------------------------------ IA */
+
+.nv-ia {
+  border: 1px solid var(--nv-ia); background: var(--nv-ia-voile);
+  border-radius: var(--nv-r); padding: 10px 12px;
+}
+.nv-ia__marque {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700;
+  color: var(--nv-ia-encre);
+}
+.nv-ia__marque::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--nv-ia); }
+.nv-ia__texte { white-space: pre-wrap; font-size: 14px; margin-top: 6px; }
+
+/* ------------------------------------------------------------ radar */
+
+.nv-radar { width: 100%; max-width: 320px; height: auto; display: block; margin-inline: auto; overflow: visible; }
+.nv-radar__grille { fill: none; stroke: var(--nv-trait); stroke-width: 1; }
+.nv-radar__axe { stroke: var(--nv-trait); stroke-width: 1; }
+.nv-radar__label { fill: var(--nv-encre-2); font: 700 11px var(--nv-police-texte); }
+.nv-radar__label--manquant { fill: var(--nv-encre-3); font-style: italic; text-decoration: line-through; }
+.nv-radar__serie { fill: var(--nv-action-voile); stroke: var(--nv-action-encre); stroke-width: 2; }
+.nv-radar__point { fill: var(--nv-action-encre); }
+.nv-radar__serie.nv-b { fill: var(--nv-ia-voile); stroke: var(--nv-ia); stroke-dasharray: 5 3; }
+.nv-radar__point.nv-b { fill: var(--nv-ia); }
+
+/* ------------------------------------------------------------ barres */
+
+.nv-barre { position: relative; height: 6px; border-radius: 3px; background: var(--nv-surface-2); overflow: hidden; }
+.nv-barre > span { position: absolute; inset: 0 auto 0 0; border-radius: 3px; }
+.nv-barre--manquant {
+  background: repeating-linear-gradient(45deg, var(--nv-manquant-fond) 0 4px, var(--nv-manquant-trait) 4px 5px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}

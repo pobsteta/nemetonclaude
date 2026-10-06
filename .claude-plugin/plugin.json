@@ -1,0 +1,10 @@
+{
+  "name": "nemeton",
+  "version": "0.1.0",
+  "description": "Diagnostic forestier nemeton dans Claude : connecteur MCP (R) et vues interactives publiées en artéfacts (Sélection des parcelles, Atlas du projet).",
+  "author": { "name": "Pascal Obstetar", "email": "pascal.obstetar@gmail.com" },
+  "homepage": "https://github.com/pobsteta/nemetonclaude",
+  "repository": "https://github.com/pobsteta/nemetonclaude",
+  "license": "EUPL-1.2",
+  "keywords": ["forêt", "cadastre", "nemeton", "cartographie", "mcp"]
+}

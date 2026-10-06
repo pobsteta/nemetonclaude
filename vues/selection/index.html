@@ -1,0 +1,506 @@
+<title>Sélection des parcelles</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&family=Spectral:wght@500;600&display=swap">
+<link rel="stylesheet" href="nemeton-view.css">
+<style>
+  /* Vue 0 : carte de la commune à gauche, sélection à droite (en bas sur mobile). */
+  :root { --sel-panneau: 360px; }
+  .sel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--sel-panneau);
+    min-height: 0;
+  }
+  .sel__panneau {
+    display: flex; flex-direction: column; gap: 14px; min-height: 0; overflow: auto;
+    padding: 14px var(--nv-gouttiere) 18px;
+    background: var(--nv-surface); border-left: 1px solid var(--nv-trait);
+  }
+  .sel__bloc { display: flex; flex-direction: column; gap: 8px; }
+  .sel__outils { display: flex; flex-wrap: wrap; gap: 8px; }
+  .sel__recherche { display: flex; gap: 8px; }
+  .sel__recherche .nv-champ { flex: 1; min-width: 0; }
+  .sel__recherche .nv-champ:not(:placeholder-shown) { text-transform: uppercase; }
+  .sel__total {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+    border: 1px solid var(--nv-trait); border-radius: var(--nv-r); overflow: hidden; background: var(--nv-trait);
+  }
+  .sel__total > div { background: var(--nv-surface); padding: 10px 12px; }
+  .sel__total .nv-chiffre { font-size: 26px; line-height: 1.1; display: block; }
+  .sel__liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+  .sel__liste li {
+    display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 8px;
+    padding: 4px 2px 4px 8px; border-bottom: 1px solid var(--nv-trait); font-size: 14px;
+  }
+  .sel__liste li:hover { background: var(--nv-surface-2); }
+  .sel__liste .ref { font-family: var(--nv-police-chiffres); font-weight: 600; }
+  .sel__liste .ha { font-family: var(--nv-police-chiffres); color: var(--nv-encre-2); font-size: 13px; }
+  .sel__retirer {
+    width: 28px; height: 28px; border: 0; border-radius: var(--nv-r); background: transparent;
+    color: var(--nv-encre-3); cursor: pointer; font-size: 16px; line-height: 1;
+  }
+  .sel__retirer:hover { background: var(--nv-surface-2); color: var(--nv-alerte); }
+  .sel__vide { color: var(--nv-encre-2); font-size: 14px; margin: 0; }
+  .sel__idu {
+    width: 100%; min-height: 110px; resize: vertical;
+    font: 12px/1.5 var(--nv-police-chiffres); color: var(--nv-encre);
+    background: var(--nv-surface-2); border: 1px solid var(--nv-trait); border-radius: var(--nv-r); padding: 8px;
+  }
+  .sel__resultat {
+    border: 1px solid var(--nv-action-encre); background: var(--nv-action-voile);
+    border-radius: var(--nv-r); padding: 10px 12px; font-size: 14px;
+  }
+  .sel__legende-ligne { display: flex; align-items: center; gap: 8px; }
+  .sel__pastille { width: 14px; height: 10px; border-radius: 2px; border: 1px solid var(--nv-parcelle); }
+  .sel__pastille--choisie { background: var(--nv-choisie); border-color: var(--nv-choisie); }
+  .sel__pastille--foret { background: var(--nv-foret); }
+  .sel--rectangle .leaflet-container { cursor: crosshair; }
+  .sel__exemple {
+    font-size: 12px; color: var(--nv-encre-2); border: 1px dashed var(--nv-trait);
+    border-radius: var(--nv-r); padding: 6px 8px;
+  }
+
+  @media (max-width: 760px) {
+    .sel { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(300px, 55vh) auto; overflow: auto; }
+    .sel__panneau { border-left: 0; border-top: 1px solid var(--nv-trait); overflow: visible; }
+    .nv-app { height: auto; min-height: 100%; }
+  }
+</style>
+
+<div class="nv-app">
+  <header class="nv-entete">
+    <div class="nv-entete__titre">
+      <span class="nv-etiquette" data-t="eyebrow">Nouveau projet · sélection des parcelles</span>
+      <h1 id="titre-commune">Commune</h1>
+      <span class="nv-muet nv-chiffre" id="sous-titre"></span>
+    </div>
+    <div class="nv-entete__outils">
+      <div class="nv-bascule" role="group" aria-label="Langue">
+        <button type="button" id="lang-fr" aria-pressed="true">FR</button>
+        <button type="button" id="lang-en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="sel" id="sel">
+    <div class="nv-carte" id="carte" aria-label="Carte des parcelles"></div>
+
+    <aside class="sel__panneau" aria-labelledby="titre-selection">
+      <p class="sel__exemple" id="bandeau-exemple" hidden data-t="exemple">Données fictives de démonstration.</p>
+
+      <section class="sel__bloc">
+        <label class="nv-etiquette" for="recherche" data-t="chercher">Chercher une parcelle</label>
+        <form class="sel__recherche" id="form-recherche">
+          <input class="nv-champ" id="recherche" autocomplete="off" data-t-placeholder="chercher_aide" placeholder="AB 12">
+          <button class="nv-bouton" type="submit" data-t="ajouter">Ajouter</button>
+        </form>
+        <div class="sel__outils">
+          <button class="nv-bouton" type="button" id="btn-rectangle" aria-pressed="false" data-t="rectangle">Sélection au rectangle</button>
+          <button class="nv-bouton nv-bouton--discret" type="button" id="btn-recentrer" data-t="recentrer">Recentrer</button>
+        </div>
+        <div class="nv-statut" id="statut-carte" role="status" aria-live="polite"></div>
+      </section>
+
+      <section class="sel__bloc">
+        <h2 id="titre-selection" style="font-size:18px" data-t="votre_foret">Votre forêt</h2>
+        <div class="sel__total">
+          <div><span class="nv-etiquette" data-t="parcelles">Parcelles</span><span class="nv-chiffre" id="total-n">0</span></div>
+          <div><span class="nv-etiquette" data-t="surface">Surface</span><span class="nv-chiffre" id="total-ha">0 ha</span></div>
+        </div>
+        <p class="sel__vide" id="liste-vide" data-t="vide">Cliquez sur les parcelles de votre forêt pour les ajouter. Un second clic les retire.</p>
+        <ul class="sel__liste" id="liste"></ul>
+        <button class="nv-bouton nv-bouton--discret" type="button" id="btn-effacer" hidden data-t="effacer">Tout retirer</button>
+      </section>
+
+      <section class="sel__bloc" id="bloc-projet">
+        <label class="nv-etiquette" for="nom-projet" data-t="nom_projet">Nom du projet</label>
+        <input class="nv-champ" id="nom-projet" maxlength="100" autocomplete="off">
+        <button class="nv-bouton nv-bouton--action" type="button" id="btn-creer" disabled data-t="creer">Créer le projet</button>
+        <div class="nv-statut" id="statut-projet" role="status" aria-live="polite"></div>
+        <div class="sel__resultat" id="resultat" hidden></div>
+      </section>
+
+      <section class="sel__bloc" id="bloc-idu" hidden>
+        <label class="nv-etiquette" for="idu" data-t="idu_titre">Identifiants des parcelles (IDU)</label>
+        <p class="nv-muet" style="margin:0;font-size:13px" id="idu-consigne" data-t="idu_consigne">Copiez cette liste et collez-la dans la conversation : Claude créera le projet.</p>
+        <textarea class="sel__idu" id="idu" readonly></textarea>
+        <button class="nv-bouton" type="button" id="btn-copier" data-t="copier">Copier la liste</button>
+      </section>
+
+      <section class="sel__bloc">
+        <span class="nv-etiquette" data-t="legende">Légende</span>
+        <div class="sel__legende-ligne"><span class="sel__pastille sel__pastille--choisie"></span><span data-t="leg_choisie">Parcelle retenue</span></div>
+        <div class="sel__legende-ligne" id="leg-foret"><span class="sel__pastille sel__pastille--foret"></span><span data-t="leg_foret">Couverte par la BD Forêt (repère, non présélectionnée)</span></div>
+        <div class="sel__legende-ligne"><span class="sel__pastille"></span><span data-t="leg_autre">Autre parcelle</span></div>
+      </section>
+    </aside>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="nemeton-view.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  NV.textes({
+    fr: {
+      eyebrow: "Nouveau projet · sélection des parcelles",
+      exemple: "Données fictives de démonstration : aucune parcelle réelle.",
+      chercher: "Chercher une parcelle",
+      chercher_aide: "Section et numéro, ex. AB 12",
+      ajouter: "Ajouter",
+      rectangle: "Sélection au rectangle",
+      rectangle_actif: "Tracez un rectangle sur la carte : toutes les parcelles touchées sont ajoutées.",
+      recentrer: "Recentrer",
+      votre_foret: "Votre forêt",
+      parcelles: "Parcelles",
+      surface: "Surface",
+      vide: "Cliquez sur les parcelles de votre forêt pour les ajouter. Un second clic les retire.",
+      effacer: "Tout retirer",
+      nom_projet: "Nom du projet",
+      creer: "Créer le projet",
+      creation: "Création du projet…",
+      cree: "Projet « {nom} » créé : {n} parcelles, {ha}. Identifiant {id}.",
+      cree_suite: "Revenez à la conversation : Claude lance le calcul et ouvre la vue de suivi.",
+      lancer: "Lancer le calcul",
+      calcul_lance: "Calcul lancé en tâche de fond. Demandez à Claude d'ouvrir la vue Calcul pour le suivre.",
+      idu_titre: "Identifiants des parcelles (IDU)",
+      idu_consigne: "Copiez cette liste et collez-la dans la conversation : Claude créera le projet.",
+      copier: "Copier la liste",
+      copie: "Liste copiée.",
+      copie_manuelle: "Copie automatique refusée : la liste est sélectionnée, copiez-la avec Ctrl+C.",
+      legende: "Légende",
+      leg_choisie: "Parcelle retenue",
+      leg_foret: "Couverte par la BD Forêt (repère, non présélectionnée)",
+      leg_autre: "Autre parcelle",
+      introuvable: "Parcelle « {ref} » introuvable dans cette commune.",
+      deja: "{ref} est déjà dans votre forêt.",
+      ajoutee: "{ref} ajoutée.",
+      ajoutees: "{n} parcelles ajoutées.",
+      section_charge: "Chargement de la section {s}…",
+      section_clic: "Commune étendue : cliquez sur une section pour afficher ses parcelles.",
+      infobulle: "Section {s} · n° {n}",
+      retirer: "Retirer {ref}",
+      nom_requis: "Donnez un nom au projet.",
+      restauree: "Sélection précédente restaurée : {n} parcelles.",
+      erreur_donnees: "Les parcelles de la commune n'ont pas pu être chargées : {message}"
+    },
+    en: {
+      eyebrow: "New project · parcel selection",
+      exemple: "Fictional demo data: no real parcel.",
+      chercher: "Find a parcel",
+      chercher_aide: "Section and number, e.g. AB 12",
+      ajouter: "Add",
+      rectangle: "Rectangle selection",
+      rectangle_actif: "Draw a rectangle on the map: every parcel it touches is added.",
+      recentrer: "Recentre",
+      votre_foret: "Your forest",
+      parcelles: "Parcels",
+      surface: "Area",
+      vide: "Click the parcels of your forest to add them. A second click removes them.",
+      effacer: "Remove all",
+      nom_projet: "Project name",
+      creer: "Create the project",
+      creation: "Creating the project…",
+      cree: "Project “{nom}” created: {n} parcels, {ha}. Id {id}.",
+      cree_suite: "Go back to the conversation: Claude starts the computation and opens the progress view.",
+      lancer: "Start the computation",
+      calcul_lance: "Computation started in the background. Ask Claude to open the Computation view to follow it.",
+      idu_titre: "Parcel identifiers (IDU)",
+      idu_consigne: "Copy this list and paste it into the conversation: Claude will create the project.",
+      copier: "Copy the list",
+      copie: "List copied.",
+      copie_manuelle: "Automatic copy refused: the list is selected, copy it with Ctrl+C.",
+      legende: "Legend",
+      leg_choisie: "Selected parcel",
+      leg_foret: "Covered by the BD Forêt (landmark, not preselected)",
+      leg_autre: "Other parcel",
+      introuvable: "Parcel “{ref}” not found in this commune.",
+      deja: "{ref} is already in your forest.",
+      ajoutee: "{ref} added.",
+      ajoutees: "{n} parcels added.",
+      section_charge: "Loading section {s}…",
+      section_clic: "Large commune: click a section to show its parcels.",
+      infobulle: "Section {s} · no. {n}",
+      retirer: "Remove {ref}",
+      nom_requis: "Give the project a name.",
+      restauree: "Previous selection restored: {n} parcels.",
+      erreur_donnees: "The commune's parcels could not be loaded: {message}"
+    }
+  });
+
+  var $ = function (id) { return document.getElementById(id); };
+  var meta = {};
+  var parcelles = new Map();      // idu -> {props, couche}
+  var choisies = new Set();       // idu
+  var mcp = null;
+  var carte = NV.carte("carte", { zoomControl: true });
+  var groupe = L.featureGroup().addTo(carte);
+  var emprise = null;
+  var cleStockage = "nemeton-selection";
+
+  function ref(p) { return p.section + " " + p.numero; }
+
+  function style(p) {
+    var c = choisies.has(p.idu);
+    return {
+      color: c ? NV.css("--nv-choisie") : NV.css("--nv-parcelle"),
+      weight: c ? 1.6 : 0.6,
+      fillColor: c ? NV.css("--nv-choisie") : (p.foret ? NV.css("--nv-foret") : "transparent"),
+      fillOpacity: c ? 0.55 : 1
+    };
+  }
+
+  function ajouterCouche(gj) {
+    L.geoJSON(gj, {
+      style: function (f) { return style(f.properties); },
+      onEachFeature: function (f, couche) {
+        var p = f.properties;
+        parcelles.set(p.idu, { props: p, couche: couche });
+        couche.bindTooltip(function () {
+          return "<strong class='nv-num'>" + NV.echapper(ref(p)) + "</strong><br>" +
+            NV.t("infobulle", { s: NV.echapper(p.section), n: NV.echapper(p.numero) }) +
+            " · <span class='nv-num'>" + NV.hectares(p.contenance) + "</span>";
+        }, { className: "nv-infobulle", sticky: true, direction: "top", offset: [0, -6] });
+        couche.on("click", function () { if (!modeRectangle) basculer(p.idu); });
+        couche.on("mouseover", function () { couche.setStyle({ weight: 2.4 }); });
+        couche.on("mouseout", function () { couche.setStyle(style(p)); });
+      }
+    }).addTo(groupe);
+  }
+
+  function basculer(idu, forcer) {
+    var dedans = choisies.has(idu);
+    if (forcer === true && dedans) return false;
+    if (dedans && forcer !== true) choisies.delete(idu); else choisies.add(idu);
+    var e = parcelles.get(idu);
+    if (e) e.couche.setStyle(style(e.props));
+    rendre();
+    return true;
+  }
+
+  function rendre() {
+    var liste = $("liste");
+    var items = Array.from(choisies).map(function (idu) {
+      var e = parcelles.get(idu);
+      return e ? e.props : { idu: idu, section: idu.slice(8, 10).replace(/^0/, ""), numero: String(parseInt(idu.slice(10), 10)), contenance: null };
+    }).sort(function (a, b) {
+      return a.section === b.section ? (parseInt(a.numero, 10) - parseInt(b.numero, 10)) : (a.section < b.section ? -1 : 1);
+    });
+    var total = items.reduce(function (s, p) { return s + (Number(p.contenance) || 0); }, 0);
+    $("total-n").textContent = NV.nombre(items.length);
+    $("total-ha").textContent = NV.hectares(total);
+    $("liste-vide").hidden = items.length > 0;
+    $("btn-effacer").hidden = items.length === 0;
+    $("btn-creer").disabled = items.length === 0;
+    liste.innerHTML = items.map(function (p) {
+      return "<li><span class='ref'>" + NV.echapper(ref(p)) + "</span><span class='ha'>" +
+        NV.hectares(p.contenance) + "</span><button type='button' class='sel__retirer' data-idu='" +
+        NV.echapper(p.idu) + "' aria-label='" + NV.echapper(NV.t("retirer", { ref: ref(p) })) + "'>✕</button></li>";
+    }).join("");
+    $("idu").value = items.map(function (p) { return p.idu; }).join(", ");
+    $("bloc-idu").hidden = items.length === 0 || mcp !== null;
+    NV.stockage.ecrire(cleStockage, Array.from(choisies));
+  }
+
+  $("liste").addEventListener("click", function (ev) {
+    var b = ev.target.closest(".sel__retirer");
+    if (b) basculer(b.getAttribute("data-idu"));
+  });
+  $("liste").addEventListener("mouseover", function (ev) {
+    var b = ev.target.closest("li"); if (!b) return;
+    var e = parcelles.get(b.querySelector(".sel__retirer").getAttribute("data-idu"));
+    if (e) e.couche.setStyle({ weight: 3 });
+  });
+  $("liste").addEventListener("mouseout", function (ev) {
+    var b = ev.target.closest("li"); if (!b) return;
+    var e = parcelles.get(b.querySelector(".sel__retirer").getAttribute("data-idu"));
+    if (e) e.couche.setStyle(style(e.props));
+  });
+  $("btn-effacer").addEventListener("click", function () {
+    var anciennes = Array.from(choisies);
+    choisies.clear();
+    anciennes.forEach(function (idu) { var e = parcelles.get(idu); if (e) e.couche.setStyle(style(e.props)); });
+    rendre();
+  });
+
+  /* ---------------------------------------------- recherche « AB 12 » ou IDU */
+  $("form-recherche").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var q = $("recherche").value.trim().toUpperCase();
+    if (!q) return;
+    var trouve = null;
+    if (parcelles.has(q)) trouve = parcelles.get(q);
+    var m = q.match(/^([0-9]{0,3}[A-Z]{1,2})\s*0*([0-9]+)$/);
+    if (!trouve && m) {
+      parcelles.forEach(function (e) {
+        if (!trouve && e.props.section.toUpperCase() === m[1] && String(parseInt(e.props.numero, 10)) === m[2]) trouve = e;
+      });
+    }
+    var st = $("statut-carte");
+    if (!trouve) { NV.annoncer(st, NV.t("introuvable", { ref: q })); return; }
+    var r = ref(trouve.props);
+    NV.annoncer(st, basculer(trouve.props.idu, true) ? NV.t("ajoutee", { ref: r }) : NV.t("deja", { ref: r }));
+    carte.flyToBounds(trouve.couche.getBounds(), { maxZoom: 17, duration: NV.mouvementReduit() ? 0 : 0.6 });
+    $("recherche").value = "";
+  });
+
+  /* ---------------------------------------------- sélection au rectangle */
+  var modeRectangle = false, depart = null, cadre = null;
+  function activerRectangle(actif) {
+    modeRectangle = actif;
+    $("btn-rectangle").setAttribute("aria-pressed", String(actif));
+    $("sel").classList.toggle("sel--rectangle", actif);
+    if (actif) { carte.dragging.disable(); NV.annoncer($("statut-carte"), NV.t("rectangle_actif"), 0); }
+    else { carte.dragging.enable(); NV.annoncer($("statut-carte"), ""); }
+  }
+  $("btn-rectangle").addEventListener("click", function () { activerRectangle(!modeRectangle); });
+  carte.on("mousedown", function (ev) {
+    if (!modeRectangle) return;
+    depart = ev.latlng;
+    cadre = L.rectangle([depart, depart], { pane: "surlignage", color: NV.css("--nv-action"), weight: 1.5, dashArray: "4 3", fillOpacity: 0.08, interactive: false }).addTo(carte);
+  });
+  carte.on("mousemove", function (ev) { if (cadre) cadre.setBounds([depart, ev.latlng]); });
+  carte.on("mouseup", function () {
+    if (!cadre) return;
+    var b = cadre.getBounds(), n = 0;
+    carte.removeLayer(cadre); cadre = null;
+    parcelles.forEach(function (e) {
+      if (b.intersects(e.couche.getBounds()) && basculer(e.props.idu, true)) n++;
+    });
+    NV.annoncer($("statut-carte"), NV.t("ajoutees", { n: NV.nombre(n) }));
+    activerRectangle(false);
+  });
+
+  $("btn-recentrer").addEventListener("click", function () { if (emprise) carte.fitBounds(emprise, { padding: [16, 16] }); });
+
+  /* ---------------------------------------------- création du projet */
+  $("btn-creer").addEventListener("click", function () {
+    var nom = $("nom-projet").value.trim();
+    var st = $("statut-projet");
+    if (!nom) { NV.annoncer(st, NV.t("nom_requis")); $("nom-projet").focus(); return; }
+    if (!mcp) { $("bloc-idu").hidden = false; $("idu").focus(); $("idu").select(); return; }
+    var bouton = $("btn-creer");
+    bouton.disabled = true;
+    NV.annoncer(st, NV.t("creation"), 0);
+    NV.appeler(mcp, "creer_projet", { nom: nom, insee: meta.insee, parcelles: Array.from(choisies) })
+      .then(function (r) {
+        NV.annoncer(st, "");
+        var res = $("resultat");
+        res.hidden = false;
+        res.innerHTML = "<p style='margin:0 0 8px'>" + NV.echapper(NV.t("cree", {
+          nom: r.nom, n: NV.nombre(r.n_parcelles), ha: NV.nombre(r.surface_ha, 2) + " ha", id: r.projet })) +
+          "</p><p style='margin:0 0 10px' class='nv-muet'>" + NV.echapper(NV.t("cree_suite")) + "</p>" +
+          "<button type='button' class='nv-bouton' id='btn-lancer'>" + NV.echapper(NV.t("lancer")) + "</button>";
+        NV.stockage.effacer(cleStockage);
+        $("btn-lancer").addEventListener("click", function () {
+          var b = this; b.disabled = true;
+          NV.appeler(mcp, "lancer_calcul", { projet: r.projet })
+            .then(function () { NV.annoncer(st, NV.t("calcul_lance"), 0); })
+            .catch(function (e) { b.disabled = false; NV.annoncer(st, NV.messageMcp(e), 0); });
+        });
+      })
+      .catch(function (e) {
+        bouton.disabled = false;
+        NV.annoncer(st, NV.messageMcp(e), 0);
+        // Repli : la liste à coller dans la conversation reste toujours possible.
+        $("bloc-idu").hidden = false;
+      });
+  });
+
+  $("btn-copier").addEventListener("click", function () {
+    NV.copier($("idu").value, $("idu")).then(function (ok) {
+      NV.annoncer($("statut-projet"), NV.t(ok ? "copie" : "copie_manuelle"));
+    });
+  });
+
+  /* ---------------------------------------------- langue */
+  function majLangue() {
+    NV.traduire();
+    $("sous-titre").textContent = "INSEE " + (meta.insee || "—") +
+      (meta.n ? " · " + NV.nombre(meta.n) + " " + NV.t("parcelles").toLowerCase() + " · " + NV.nombre(meta.surface_ha, 0) + " ha" : "");
+    $("lang-fr").setAttribute("aria-pressed", String(NV.lang === "fr"));
+    $("lang-en").setAttribute("aria-pressed", String(NV.lang === "en"));
+    rendre();
+  }
+  $("lang-fr").addEventListener("click", function () { NV.changerLangue("fr"); majLangue(); });
+  $("lang-en").addEventListener("click", function () { NV.changerLangue("en"); majLangue(); });
+
+  /* ---------------------------------------------- chargement */
+  function chargerSection(s, fichier) {
+    NV.annoncer($("statut-carte"), NV.t("section_charge", { s: s }), 0);
+    return NV.charger(fichier).then(function (gj) {
+      if (gj) ajouterCouche(gj);
+      NV.annoncer($("statut-carte"), "");
+      choisies.forEach(function (idu) { var e = parcelles.get(idu); if (e) e.couche.setStyle(style(e.props)); });
+    });
+  }
+
+  Promise.all([
+    NV.charger("selection.json"),
+    NV.charger("commune.geojson"),
+    NV.charger("sections.geojson")
+  ]).then(function (r) {
+    meta = r[0] || {};
+    var commune = r[1], sections = r[2];
+    $("titre-commune").textContent = meta.commune || "Commune";
+    $("bandeau-exemple").hidden = !meta.exemple;
+    $("leg-foret").hidden = meta.bd_foret === false;
+    $("nom-projet").value = meta.nom_projet || ("Forêt de " + (meta.commune || ""));
+    cleStockage = "nemeton-selection:" + (meta.insee || "");
+
+    var c = NV.repere(carte, commune, { color: NV.css("--nv-commune"), weight: 2.2, fill: false });
+    var s = null;
+    if (meta.mode === "par_section") {
+      s = L.geoJSON(sections, {
+        pane: "reperes",
+        style: { color: NV.css("--nv-section"), weight: 1.2, dashArray: "6 4", fillOpacity: 0.04, fillColor: NV.css("--nv-section") },
+        onEachFeature: function (f, couche) {
+          var code = f.properties.section, charge = false;
+          var info = (meta.sections || []).find(function (x) { return x.section === code; }) || {};
+          couche.bindTooltip(NV.t("infobulle", { s: code, n: "—" }).split(" · ")[0], { className: "nv-infobulle", sticky: true });
+          couche.on("click", function () {
+            if (charge) return; charge = true;
+            chargerSection(code, "sections/" + code + ".geojson");
+          });
+          void info;
+        }
+      }).addTo(carte);
+      NV.annoncer($("statut-carte"), NV.t("section_clic"), 0);
+    } else {
+      s = NV.repere(carte, sections, { color: NV.css("--nv-section"), weight: 1.2, dashArray: "6 4", fill: false });
+    }
+    var base = (c || s);
+    emprise = base ? base.getBounds() : null;
+    if (meta.emprise && meta.emprise.length === 4) {
+      emprise = L.latLngBounds([meta.emprise[1], meta.emprise[0]], [meta.emprise[3], meta.emprise[2]]);
+    }
+
+    var anciennes = NV.stockage.lire(cleStockage, []);
+    if (Array.isArray(anciennes)) anciennes.forEach(function (idu) { choisies.add(idu); });
+
+    var suite = meta.mode === "par_section" ? Promise.resolve() :
+      NV.charger("parcelles.geojson").then(function (gj) { if (gj) ajouterCouche(gj); });
+    return suite.then(function () {
+      if (!emprise && groupe.getLayers().length) emprise = groupe.getBounds();
+      if (emprise) carte.fitBounds(emprise, { padding: [16, 16] });
+      // Rendu des sections déjà choisies dans une commune chargée par section.
+      if (meta.mode === "par_section") {
+        var aCharger = new Set(Array.from(choisies).map(function (idu) { return idu.slice(8, 10).replace(/^0/, ""); }));
+        aCharger.forEach(function (sec) { chargerSection(sec, "sections/" + sec + ".geojson"); });
+      }
+      if (choisies.size) NV.annoncer($("statut-carte"), NV.t("restauree", { n: NV.nombre(choisies.size) }), 6000);
+      majLangue();
+    });
+  }).catch(function (e) {
+    var a = document.createElement("p");
+    a.className = "nv-alerte";
+    a.textContent = NV.t("erreur_donnees", { message: e.message });
+    $("statut-carte").replaceWith(a);
+  });
+
+  NV.capacite("mcp").then(function (m) { mcp = m; rendre(); });
+  majLangue();
+})();
+</script>
