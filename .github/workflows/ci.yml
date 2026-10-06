@@ -1,0 +1,136 @@
+# Vérification automatique : versions alignées, vues (tests unitaires et de
+# bout en bout) et connecteur R (R CMD check, tests, couverture).
+# Le succès de ce workflow sur main déclenche la publication (release.yml).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # r/DESCRIPTION = package.json = plugin.json = NEWS.md. Évite qu'une
+  # version publiée ne corresponde pas à ce qui est installé.
+  versions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node outils/version.mjs verifier
+
+  vues:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Pas de package-lock.json versionné : npm install plutôt que npm ci.
+      - run: npm install --no-audit --no-fund
+      - name: Version de Playwright
+        id: pw
+        run: echo "version=$(node -p 'require("playwright/package.json").version')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+      - run: npx playwright install --with-deps chromium
+      - name: Tests unitaires (moteur, outils) avec couverture
+        run: npm run couverture
+      - name: Tests de bout en bout des vues (Chromium)
+        run: npm run test:vues
+      # Les exemples sont régénérés par les tests : ils doivent être à jour.
+      - name: Données d'exemple à jour
+        run: git diff --exit-code -- vues/exemples
+      - uses: codecov/codecov-action@v7
+        with:
+          files: ./lcov.info
+          flags: vues
+          disable_search: true
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  r:
+    runs-on: ubuntu-latest
+    # Premier passage long : nemetonshiny et ses dépendances (nemeton,
+    # foretaccess compilé en Rust, lasR) s'installent depuis GitHub. Le cache
+    # de setup-r-dependencies rend les suivants rapides.
+    timeout-minutes: 75
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      NOT_CRAN: true
+      R_KEEP_PKG_SOURCE: yes
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+
+      - name: Dépendances système (sf, GDAL, PROJ, GEOS)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgdal-dev libgeos-dev libproj-dev libudunits2-dev \
+            libsqlite3-dev libssl-dev libcurl4-openssl-dev libxml2-dev \
+            libfontconfig1-dev libharfbuzz-dev libfribidi-dev \
+            libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev
+
+      # foretaccess (dépendance de nemetonshiny) compile un noyau Rust.
+      - uses: dtolnay/rust-toolchain@stable
+
+      # dissUtils et spinR : dépendances de biodivMapR, tiré par nemetonshiny
+      # (même liste que la CI de nemetonshiny).
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          working-directory: r
+          extra-packages: |
+            any::rcmdcheck
+            any::testthat
+            any::withr
+            any::covr
+            any::xml2
+            github::cran/dissUtils
+            jbferet/spinR
+          needs: check
+
+      - name: R CMD check
+        uses: r-lib/actions/check-r-package@v2
+        with:
+          working-directory: r
+          args: 'c("--no-manual", "--no-tests")'
+          error-on: '"warning"'
+
+      - name: Tests (testthat)
+        shell: Rscript {0}
+        run: testthat::test_local("r", reporter = "summary", stop_on_failure = TRUE)
+
+      - name: Couverture
+        shell: Rscript {0}
+        run: |
+          cov <- covr::package_coverage("r", quiet = FALSE)
+          covr::to_cobertura(cov, "cobertura.xml")
+          cat(sprintf("### Couverture R : %.1f %%\n", covr::percent_coverage(cov)),
+              file = Sys.getenv("GITHUB_STEP_SUMMARY"), append = TRUE)
+
+      - uses: codecov/codecov-action@v7
+        with:
+          files: ./cobertura.xml
+          flags: r
+          disable_search: true
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}

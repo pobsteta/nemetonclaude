@@ -37,9 +37,9 @@ SEUIL_GEOJSON <- 5e6  # octets ; au-dela, la vue charge les sections une a une
   foret <- tryCatch({
     zone <- sf::st_as_sfc(sf::st_bbox(sf::st_transform(p, 2154)))
     happign::get_wfs(x = zone, layer = "LANDCOVER.FORESTINVENTORY.V2:formation_vegetale",
-                     spatial_filter = "intersects")
+                     predicate = happign::intersects())
   }, error = function(e) {
-    cli::cli_warn("BD Forêt indisponible : {conditionMessage(e)}")
+    cli::cli_warn("BD For\u00eat indisponible : {conditionMessage(e)}")
     NULL
   })
   if (is.null(foret) || !nrow(foret)) return(p)

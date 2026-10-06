@@ -24,10 +24,10 @@
 creer_projet <- function(nom, insee, parcelles, description = "") {
   .mcp_call({
     nom <- trimws(as.character(nom %||% ""))
-    if (!nzchar(nom)) .abort("Nom de projet non précisé.", "nemetonclaude_nom_manquant")
+    if (!nzchar(nom)) .abort("Nom de projet non pr\u00e9cis\u00e9.", "nemetonclaude_nom_manquant")
     if (nchar(nom) > 100) nom <- substr(nom, 1, 100)
     ids <- .normaliser_idu(parcelles)
-    if (!length(ids)) .abort("Aucune parcelle sélectionnée.", "nemetonclaude_selection_vide")
+    if (!length(ids)) .abort("Aucune parcelle s\u00e9lectionn\u00e9e.", "nemetonclaude_selection_vide")
     insee <- toupper(trimws(as.character(insee)))
 
     p <- nemetonshiny::parcelles_commune(insee, ids = ids)

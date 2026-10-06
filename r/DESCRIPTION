@@ -17,3 +17,4 @@ Suggests: mcptools, happign, testthat (>= 3.0.0), withr
 Remotes: pobsteta/nemetonshiny, pobsteta/nemeton@*release
 Config/testthat/edition: 3
 Roxygen: list(markdown = TRUE)
+Config/roxygen2/version: 8.1.0
