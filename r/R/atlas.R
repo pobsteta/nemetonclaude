@@ -97,6 +97,8 @@
 #' @param tolerance_m Simplification tolerance in metres (raised by itself,
 #'   up to three times, while the file exceeds 5 MB).
 #' @param bruts Also include raw indicator values (heavier).
+#' @param inclure_geojson Also return the GeoJSON inline when it stays under
+#'   2 MB (for a view calling the connector through the `mcp` capability).
 #' @return JSON: project header, `fichier` (GeoJSON to join to the artifact
 #'   as `atlas.geojson`), size and bounding box.
 #' @export
@@ -107,7 +109,7 @@ vue_atlas <- function(projet, langue = "fr", tolerance_m = 1, bruts = FALSE,
     langue <- if (identical(langue, "en")) "en" else "fr"
     lu <- .lire_projet(id, langue)
     if (is.null(lu$familles) || !nrow(lu$familles)) {
-      .abort(c("Projet {.val {id}} : aucun indicateur calculé.",
+      .abort(c("Projet {.val {id}} : aucun indicateur calcul\u00e9.",
                i = "Lancer {.code lancer_calcul} puis suivre {.code etat_calcul}."),
              "nemetonshiny_sans_indicateurs")
     }
@@ -143,6 +145,7 @@ vue_atlas <- function(projet, langue = "fr", tolerance_m = 1, bruts = FALSE,
 #' @param projet Project id or name.
 #' @param ug Management unit id (`ug_id`) or label.
 #' @param code Indicator code (`"B1"`, `"a5"`...).
+#' @param langue `"fr"` or `"en"` (label and help text).
 #' @return JSON: raw value, 0-100 score, status (reason of a missing value),
 #'   label, help text, family.
 #' @export
@@ -152,12 +155,12 @@ detail_indicateur <- function(projet, ug, code, langue = "fr") {
     langue <- if (identical(langue, "en")) "en" else "fr"
     lu <- .lire_projet(id, langue)
     df <- lu$familles %||% lu$indicateurs
-    if (is.null(df)) .abort("Projet {.val {id}} : aucun indicateur calculé.", "nemetonshiny_sans_indicateurs")
+    if (is.null(df)) .abort("Projet {.val {id}} : aucun indicateur calcul\u00e9.", "nemetonshiny_sans_indicateurs")
     df <- sf::st_drop_geometry(df)
     ligne <- which(as.character(df$ug_id) == as.character(ug))
     if (!length(ligne) && "label" %in% names(df)) ligne <- which(df$label == ug)
     if (length(ligne) != 1L) {
-      .abort("Unité de gestion {.val {ug}} introuvable.", "nemetonclaude_ug_introuvable",
+      .abort("Unit\u00e9 de gestion {.val {ug}} introuvable.", "nemetonclaude_ug_introuvable",
              candidats = utils::head(as.character(df$ug_id), 20))
     }
     code <- tolower(trimws(code))

@@ -1,5 +1,12 @@
 # nemetonClaude
 
+<!-- badges: start -->
+[![CI](https://github.com/pobsteta/nemetonclaude/actions/workflows/ci.yml/badge.svg)](https://github.com/pobsteta/nemetonclaude/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/github/v/release/pobsteta/nemetonclaude?sort=semver&logo=github&label=version&color=blue)](https://github.com/pobsteta/nemetonclaude/releases/latest)
+[![codecov](https://codecov.io/gh/pobsteta/nemetonclaude/graph/badge.svg)](https://codecov.io/gh/pobsteta/nemetonclaude)
+[![License: EUPL-1.2](https://img.shields.io/badge/License-EUPL--1.2-blue.svg)](https://eupl.eu/1.2/fr/)
+<!-- badges: end -->
+
 Visualisation de [nemeton](https://github.com/pobsteta/nemeton) dans Claude,
 sous forme de plugin : un **connecteur MCP** qui calcule, et des
 **artéfacts Claude** (pages web publiées, partageables par lien) qui affichent.
@@ -68,7 +75,7 @@ npm install
 npm run exemples              # régénère vues/exemples/ (données fictives)
 node outils/assembler-vue.mjs atlas vues/exemples/atlas .apercu/atlas
 npx serve .apercu             # puis ouvrir /atlas/ et /selection/
-npm test                      # tests de bout en bout (Chromium)
+npm test                      # tests unitaires puis de bout en bout (Chromium)
 ```
 
 Côté R :
@@ -76,6 +83,34 @@ Côté R :
 ```bash
 cd r && Rscript -e 'devtools::test()'
 ```
+
+## Vérification et versions
+
+À chaque PR et sur `main`, le workflow **CI** vérifie :
+
+- que la version est la même dans `r/DESCRIPTION`, `package.json`,
+  `.claude-plugin/plugin.json` et `NEWS.md` (`npm run versions`) ;
+- les vues : tests unitaires du moteur et des outils avec couverture
+  (`npm run test:unitaires`, `npm run couverture`), tests de bout en bout dans
+  Chromium (`npm run test:vues`) ;
+- le connecteur R : `R CMD check` sans avertissement, tests testthat,
+  couverture (covr).
+
+Quand la CI passe sur `main`, le workflow **release** publie une version :
+
+| Étiquette de la PR | Version |
+| --- | --- |
+| aucune | correctif, `0.1.0` → `0.1.1` |
+| `version:mineure` | `0.1.0` → `0.2.0` |
+| `version:majeure` | `0.1.0` → `1.0.0` |
+| `version:aucune` | pas de version |
+
+Il écrit la version dans les quatre fichiers, ajoute à `NEWS.md` le titre des
+PR fusionnées depuis la version précédente, pousse le commit « Version X.Y.Z »,
+pose l'étiquette `vX.Y.Z` et crée la release GitHub. Une version montée à la
+main dans la PR (`node outils/version.mjs monter mineure`) est publiée telle
+quelle. Les PR sont fusionnées en « squash » : leur titre devient la ligne de
+`NEWS.md`.
 
 ## Limites connues
 

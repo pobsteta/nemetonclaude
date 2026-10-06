@@ -1,12 +1,17 @@
 {
   "name": "nemeton-claude-vues",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "Moteur et vues nemeton pour les artéfacts Claude : outils de fabrication et tests.",
   "scripts": {
     "exemples": "node outils/generer-exemples.mjs",
     "css": "node outils/assembler-css.mjs node_modules/leaflet/dist/leaflet.css",
-    "test": "node --check vues/moteur/nemeton-view.js && node tests/vues.test.mjs"
+    "test": "npm run test:unitaires && npm run test:vues",
+    "test:unitaires": "node --test 'tests/unitaires/*.test.mjs'",
+    "test:vues": "node --check vues/moteur/nemeton-view.js && node tests/vues.test.mjs",
+    "couverture": "node --test --experimental-test-coverage --test-coverage-include='vues/**' --test-coverage-include='outils/**' --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=lcov.info 'tests/unitaires/*.test.mjs'",
+    "versions": "node outils/version.mjs verifier"
   },
   "devDependencies": {
     "leaflet": "1.9.4",

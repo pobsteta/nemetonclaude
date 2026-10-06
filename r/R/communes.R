@@ -14,7 +14,7 @@
 #' @noRd
 .resoudre_departement <- function(departement, liste = NULL) {
   d <- trimws(as.character(departement %||% ""))
-  if (!nzchar(d)) .abort("Département non précisé.", "nemetonclaude_departement_introuvable")
+  if (!nzchar(d)) .abort("D\u00e9partement non pr\u00e9cis\u00e9.", "nemetonclaude_departement_introuvable")
   liste <- liste %||% .ns("get_departments")()
   codes <- unname(liste)
   if (toupper(d) %in% codes) return(toupper(d))
@@ -26,11 +26,11 @@
   if (!length(idx)) idx <- which(grepl(cible, noms, fixed = TRUE))
   if (length(idx) == 1L) return(codes[idx])
   if (!length(idx)) {
-    .abort("Aucun département ne correspond à {.val {d}}.",
+    .abort("Aucun d\u00e9partement ne correspond \u00e0 {.val {d}}.",
            "nemetonclaude_departement_introuvable")
   }
   candidats <- names(liste)[idx]
-  .abort(c("Plusieurs départements correspondent à {.val {d}}.", i = "{candidats}"),
+  .abort(c("Plusieurs d\u00e9partements correspondent \u00e0 {.val {d}}.", i = "{candidats}"),
          "nemetonclaude_departement_ambigu", candidats = candidats)
 }
 
@@ -105,12 +105,12 @@
 chercher_commune <- function(departement, nom, limite = 10) {
   .mcp_call({
     if (!is.character(nom) || !nzchar(trimws(nom))) {
-      .abort("Nom de commune non précisé.", "nemetonclaude_commune_introuvable")
+      .abort("Nom de commune non pr\u00e9cis\u00e9.", "nemetonclaude_commune_introuvable")
     }
     dep <- .resoudre_departement(departement)
     cand <- .candidats_communes(.requete_communes(dep, trimws(nom), as.integer(limite %||% 10)))
     if (!nrow(cand)) {
-      .abort("Aucune commune {.val {nom}} dans le département {.val {dep}}.",
+      .abort("Aucune commune {.val {nom}} dans le d\u00e9partement {.val {dep}}.",
              "nemetonclaude_commune_introuvable")
     }
     choix <- .choisir_commune(cand, nom)
@@ -119,6 +119,6 @@ chercher_commune <- function(departement, nom, limite = 10) {
          choix_requis = choix$choix_requis,
          candidats = cand,
          consigne = if (choix$choix_requis)
-           "Proposer les candidats à l'utilisateur ; ne pas choisir à sa place.")
+           "Proposer les candidats \u00e0 l'utilisateur ; ne pas choisir \u00e0 sa place.")
   })
 }

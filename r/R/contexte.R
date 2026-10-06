@@ -51,7 +51,7 @@ contexte_carto <- function(projet, marge_m = 300) {
       def <- COUCHES_CONTEXTE[[type]]
       x <- tryCatch(
         happign::get_wfs(x = sf::st_transform(zone, 2154), layer = def$couche,
-                         spatial_filter = "intersects"),
+                         predicate = happign::intersects()),
         error = function(e) e)
       if (inherits(x, "error") || is.null(x)) {
         etats[[type]] <- list(ok = FALSE, erreur = if (inherits(x, "error")) conditionMessage(x) else "vide")
@@ -70,6 +70,6 @@ contexte_carto <- function(projet, marge_m = 300) {
     }
     list(projet = id, fichier = fichier,
          taille_octets = if (!is.null(fichier)) .taille(fichier),
-         couches = etats, source = "IGN BD TOPO (Géoplateforme, via happign)")
+         couches = etats, source = "IGN BD TOPO (G\u00e9oplateforme, via happign)")
   })
 }
