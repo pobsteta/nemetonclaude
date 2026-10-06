@@ -1,6 +1,6 @@
 ---
 name: nemeton-vues
-description: Créer un projet nemeton et publier ses vues interactives dans Claude (Sélection des parcelles, Atlas du projet) à partir du connecteur MCP nemeton. À utiliser dès qu'un utilisateur parle de diagnostiquer une forêt, de créer un projet nemeton, de choisir des parcelles cadastrales, ou de voir, explorer ou partager les résultats d'un projet (familles, indicateurs, carte, radar).
+description: Créer un projet nemeton et publier ses vues interactives dans Claude (Sélection des parcelles, Calcul en cours, Atlas du projet) à partir du connecteur MCP nemeton, local ou distant. À utiliser dès qu'un utilisateur parle de diagnostiquer une forêt, de créer un projet nemeton, de choisir des parcelles cadastrales, de lancer ou suivre un calcul, ou de voir, explorer ou partager les résultats d'un projet (familles, indicateurs, carte, radar).
 ---
 
 # Vues nemeton dans Claude
@@ -8,7 +8,18 @@ description: Créer un projet nemeton et publier ses vues interactives dans Clau
 Le connecteur MCP **nemeton** calcule ; les artéfacts Claude affichent. Le
 connecteur est le seul à parler à nemeton : Claude appelle ses outils, publie
 une vue avec les fichiers qu'ils écrivent, et la vue relit le connecteur en
-direct quand elle le peut (capacité `mcp`, serveur `host:nemeton`).
+direct quand elle le peut (capacité `mcp`).
+
+Le connecteur existe sous deux formes, avec les mêmes outils :
+
+| Forme | Dans cette session | Dans le manifeste d'une vue | Qui la vue peut appeler |
+| --- | --- | --- | --- |
+| **Locale** (stdio, plugin) | outils `mcp__nemeton__*` | `host:nemeton` | le propriétaire de l'artéfact, dans l'app Claude de bureau |
+| **Distante** (HTTP + Keycloak, connecteur claude.ai) | outils `mcp__<segment>__*` d'un connecteur claude.ai nemeton | le segment `<segment>` (résolu en nom affiché à la publication) | tout lecteur qui a ajouté ce connecteur avec son compte Keycloak, sur le web, le mobile ou le bureau |
+
+Déclarer dans le manifeste **les serveurs nemeton présents dans cette
+session** (l'un, l'autre ou les deux) ; la vue choisit seule celui qui répond,
+le distant d'abord (`NV.connecter`).
 
 Référence : `specs/BRIEF-visualisation-nemeton-claude.md`.
 
@@ -18,8 +29,8 @@ Référence : `specs/BRIEF-visualisation-nemeton-claude.md`.
 | --- | --- | --- |
 | veut créer un projet, nomme une commune ou sa forêt | **Sélection** (`vues/selection/`) | `chercher_commune` → `parcelles_commune` → (vue) `creer_projet` |
 | veut voir, explorer ou partager les résultats d'un projet calculé | **Atlas** (`vues/atlas/`) | `vue_atlas`, `contexte_carto` (facultatif), `detail_indicateur` (depuis la vue) |
-| attend un calcul | conversation (lot 2 : vue Calcul) | `lancer_calcul`, `etat_calcul`, `annuler_calcul` |
-| veut un rapport, un GeoPackage | conversation | `generer_rapport`, `exporter_gpkg` |
+| lance ou attend un calcul | **Calcul** (`vues/calcul/`) | `lancer_calcul`, `etat_calcul` (suivi depuis la vue), `annuler_calcul` |
+| veut un rapport, un GeoPackage | conversation | `generer_rapport`, `exporter_gpkg` (connecteur distant : lien `urls`) |
 | veut éditer les unités de gestion | application nemetonshiny | `url_app` |
 
 ## Parcours « créer son premier projet »
@@ -41,15 +52,32 @@ Référence : `specs/BRIEF-visualisation-nemeton-claude.md`.
    - `parcelles.geojson` ← `fichiers.parcelles` en mode `complet` ;
      en mode `par_section`, un fichier `sections/<S>.geojson` par entrée de
      `sections_fichiers` (la vue les charge au clic sur la section).
-   - Capacités : `{"mcp": {"servers": [{"server": "host:nemeton", "tools": ["creer_projet", "lancer_calcul"]}]}}`.
+   - Capacités : `{"mcp": {"servers": [{"server": <serveur nemeton>, "tools": ["creer_projet", "lancer_calcul"]}]}}`,
+     une entrée par serveur nemeton de la session (voir plus haut).
 5. L'utilisateur clique ses parcelles et valide :
    - **dans l'app de bureau** avec le serveur nemeton : la vue appelle
      `creer_projet` elle-même et affiche l'identifiant ;
    - **ailleurs** (navigateur, mobile, lien partagé) : la vue affiche la liste
      des IDU à copier ; quand elle arrive dans la conversation, appeler
      `creer_projet(nom, insee, parcelles)` avec cette liste.
-6. Enchaîner : `lancer_calcul(projet)`, puis suivre `etat_calcul` jusqu'à
-   `termine`, puis ouvrir l'Atlas.
+6. Enchaîner sur le parcours « Calcul ».
+
+## Parcours « Calcul »
+
+1. `lancer_calcul(projet)` (si la vue Sélection ne l'a pas déjà fait), puis
+   un premier `etat_calcul(projet)`.
+2. Écrire dans le dossier de travail un `calcul.json` :
+   `{"projet": <id>, "nom": <nom du projet>, "etat": <réponse d'etat_calcul>}`.
+3. Publier la vue Calcul avec `calcul.json` et les capacités
+   `{"mcp": {"servers": [{"server": <serveur nemeton>, "tools": ["etat_calcul", "annuler_calcul", "lancer_calcul"]}]}}`.
+   La vue suit `etat_calcul` (environ toutes les 30 s), propose Annuler
+   (avec confirmation) et Relancer, affiche le journal en cas d'échec, et
+   invite à demander l'Atlas une fois le calcul terminé.
+4. Sans connecteur joignable pour le lecteur, la vue montre l'état figé de
+   `calcul.json` : suivre alors `etat_calcul` dans la conversation à la
+   demande de l'utilisateur, sans boucle d'attente.
+5. Quand l'utilisateur revient avec « ouvre l'Atlas de … », enchaîner sur le
+   parcours « Atlas ».
 
 ## Parcours « Atlas »
 
@@ -62,7 +90,7 @@ Référence : `specs/BRIEF-visualisation-nemeton-claude.md`.
 3. Publier la vue Atlas avec :
    - `atlas.geojson` ← `fichier` de `vue_atlas`
    - `contexte.geojson` ← `fichier` de `contexte_carto` (si présent)
-   - Capacités : `{"mcp": {"servers": [{"server": "host:nemeton", "tools": ["detail_indicateur", "exporter_gpkg"]}]}, "sample": {}, "downloads": true}`.
+   - Capacités : `{"mcp": {"servers": [{"server": <serveur nemeton>, "tools": ["detail_indicateur", "exporter_gpkg"]}]}, "sample": {}, "downloads": true}`.
 4. Résumer en deux ou trois phrases ce que montre l'Atlas (score global,
    familles les plus fortes et les plus faibles, valeurs manquantes) et donner
    le lien.
@@ -83,14 +111,27 @@ Chaque vue = sa page (`vues/<vue>/index.html`) + le moteur commun
   `vues/moteur/`.
 - Titre : le nom du projet ou de la commune (« Atlas · Forêt de Velars »,
   « Sélection · Velars-sur-Ouche »).
-- Les fichiers de données ne transitent jamais par la conversation : passer
-  les chemins rendus par les outils. Taille : moins de 5 Mo par GeoJSON (les
-  outils simplifient et découpent d'eux-mêmes).
-- La capacité `mcp` vers `host:nemeton` ne répond que dans l'app Claude de
-  bureau où le serveur est installé, et seulement pour le propriétaire de
-  l'artéfact. Le dire à l'utilisateur à la publication ; la vue reste
-  pleinement lisible sans (repli : liste d'IDU, pas de valeur brute à la
-  demande, pas d'export GeoPackage).
+- Les fichiers de données ne transitent jamais par la conversation.
+  - **Connecteur local** : passer les chemins rendus par les outils.
+  - **Connecteur distant** : les chemins sont ceux du serveur. Chaque réponse
+    qui en contient porte `urls` (chemin → lien signé, valable
+    `urls_expirent_dans_s` secondes, une heure par défaut). Télécharger chaque
+    fichier utile dans le dossier de travail (`curl -fsSL -o <fichier> <lien>`)
+    et publier ces copies. Un lien expiré : rappeler l'outil.
+  - Taille : moins de 5 Mo par GeoJSON (les outils simplifient et découpent
+    d'eux-mêmes).
+- Rapport et GeoPackage du connecteur distant : donner à l'utilisateur le lien
+  de `urls` (téléchargement direct, une heure) plutôt que le chemin.
+- Dire à l'utilisateur, à la publication, qui pourra utiliser les fonctions
+  vivantes de la vue :
+  - `host:nemeton` : seulement le propriétaire de l'artéfact, dans l'app Claude
+    de bureau où le serveur est installé ;
+  - connecteur distant : tout lecteur qui a ajouté le connecteur nemeton à son
+    compte claude.ai et dont le compte Keycloak a un rôle nemeton (`lecteur`
+    pour lire, `gestionnaire` ou `admin` pour créer un projet, lancer ou
+    annuler un calcul, écrire un export).
+  La vue reste pleinement lisible sans (repli : liste d'IDU, état figé du
+  calcul, pas de valeur brute à la demande, pas d'export GeoPackage).
 
 ## Contrat de données de l'Atlas
 
@@ -139,3 +180,7 @@ Les outils rendent `{"ok": false, "erreur", "classe", "candidats"}` :
 | `nemetonshiny_sans_indicateurs` | proposer `lancer_calcul` |
 | `nemetonshiny_projet_ancien` | le projet date d'avant nemetonshiny 1.0 : proposer de le recréer avec les mêmes parcelles |
 | `nemetonshiny_calcul_en_cours`, `nemetonshiny_projet_verrouille` | attendre, ou suivre `etat_calcul` |
+
+Connecteur distant : un outil d'écriture refusé (« réservé aux rôles … ») vient
+du rôle Keycloak du compte, pas de nemeton ; le dire à l'utilisateur et
+l'orienter vers l'administrateur du realm.

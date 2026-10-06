@@ -158,3 +158,23 @@ test("annoncer écrit puis efface le message", async () => {
   assert.equal(el.textContent, "Reste");
   assert.doesNotThrow(() => NV.annoncer(null, "x"));
 });
+
+test("connecter préfère le connecteur distant, puis le serveur local", async () => {
+  const mcp = (servers) => ({ listTools: () => Promise.resolve({ servers }) });
+  const outils = [{ name: "etat_calcul" }];
+  assert.equal(await NV.connecter(mcp([{ server: "host:nemeton", tools: outils }, { server: "nemeton ONF", tools: outils }])), "nemeton ONF");
+  assert.equal(NV.SERVEUR, "nemeton ONF");
+  assert.equal(await NV.connecter(mcp([{ server: "host:nemeton", tools: outils }])), "host:nemeton");
+  // Un connecteur listé sans outils (pas encore choisi) ou un serveur de l'artéfact ne compte pas.
+  assert.equal(await NV.connecter(mcp([{ server: "nemeton", tools: [] }, { server: "artifacts_data", kind: "artifact", tools: outils }])), null);
+  assert.equal(await NV.connecter({ listTools: () => Promise.reject({ code: "not_granted" }) }), null);
+  assert.equal(await NV.connecter(null), null);
+});
+
+test("messageMcp oriente vers le bon réglage selon le serveur", () => {
+  NV.lang = "fr";
+  NV.SERVEUR = "nemeton ONF";
+  assert.match(NV.messageMcp({ code: "server_not_connected" }), /« nemeton ONF » dans Réglages/);
+  NV.SERVEUR = "host:nemeton";
+  assert.match(NV.messageMcp({ code: "server_not_connected" }), /application Claude de bureau/);
+});

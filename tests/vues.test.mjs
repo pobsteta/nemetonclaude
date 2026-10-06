@@ -2,7 +2,7 @@
 // Leaflet est servi depuis node_modules à la place de cdnjs ; les polices
 // Google sont coupées (repli système). Lancer : npm test
 import { createServer } from "node:http";
-import { readFileSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { dirname, join, extname } from "node:path";
@@ -23,9 +23,14 @@ const dist = join(racine, ".apercu");
 rmSync(dist, { recursive: true, force: true });
 mkdirSync(dist);
 execFileSync("node", [join(racine, "outils/generer-exemples.mjs")]);
-for (const v of ["selection", "atlas"]) {
+for (const v of ["selection", "atlas", "calcul"]) {
   execFileSync("node", [join(racine, "outils/assembler-vue.mjs"), v, join(racine, "vues/exemples", v), join(dist, v)]);
 }
+// Vue Calcul branchée sur un connecteur simulé : un vrai projet (pas un exemple).
+const direct = join(dist, "_donnees-calcul-direct");
+mkdirSync(direct, { recursive: true });
+writeFileSync(join(direct, "calcul.json"), JSON.stringify({ projet: "p-test", nom: "Forêt de test" }));
+execFileSync("node", [join(racine, "outils/assembler-vue.mjs"), "calcul", direct, join(dist, "calcul-direct")]);
 
 const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".geojson": "application/geo+json" };
 const serveur = createServer((req, res) => {
@@ -41,6 +46,7 @@ const erreurs = [];
 async function ouvrir(chemin, options = {}) {
   const ctx = await navigateur.newContext({ viewport: options.viewport || { width: 1360, height: 860 }, colorScheme: options.theme || "light" });
   const page = await ctx.newPage();
+  if (options.claude) await page.addInitScript(options.claude);
   await page.route("https://cdnjs.cloudflare.com/**", (r) => r.fulfill({ path: leafletJs, contentType: "text/javascript" }));
   await page.route("https://fonts.**", (r) => r.abort());
   page.on("pageerror", (e) => erreurs.push(`${chemin}: ${e.message}`));
@@ -165,6 +171,119 @@ await test("Atlas : sombre, EN, téléphone 400 px", async () => {
   assert.equal(deborde, false);
   await capture(page, "atlas-mobile-sombre");
   await ctx.close();
+});
+
+/* ------------------------------------------------------------ Calcul */
+// Capacité mcp simulée : un connecteur distant « nemeton », un suivi
+// (watchTool) piloté par le test via window.__emettre, et le journal des
+// appels dans window.__appels.
+function claudeSimule() {
+  const etats = [];
+  window.__appels = [];
+  window.__watch = null;
+  window.__emettre = (ev) => { if (window.__watch) window.__watch(ev); };
+  const mcp = {
+    listTools: () => Promise.resolve({ servers: [{ server: "nemeton", tools: [{ name: "etat_calcul" }, { name: "annuler_calcul" }, { name: "lancer_calcul" }] }] }),
+    watchTool: (server, tool, input, handler, opts) => {
+      window.__appels.push({ type: "watch", server, tool, input, opts });
+      window.__watch = handler;
+      return () => { window.__appels.push({ type: "fin_watch" }); window.__watch = null; };
+    },
+    callTool: (server, tool, input) => {
+      window.__appels.push({ type: "call", server, tool, input });
+      if (tool === "etat_calcul") return Promise.resolve({ payload: window.__etat || { ok: true, statut: "aucun" } });
+      return Promise.resolve({ payload: { ok: true, projet: input.projet } });
+    }
+  };
+  window.claude = { use: (nom) => Promise.resolve(nom === "mcp" ? mcp : null) };
+  void etats;
+}
+const etat = (statut, plus = {}) => ({ type: "data", result: { payload: JSON.stringify({ ok: true, projet: "p-test", statut, ...plus }) } });
+
+await test("Calcul : exemple figé sans connecteur", async () => {
+  const { ctx, page } = await ouvrir("/calcul/");
+  await page.waitForFunction(() => document.getElementById("statut").textContent !== "—");
+  assert.equal(await page.textContent("#titre-projet"), "Forêt fictive de démonstration");
+  assert.equal(await page.isVisible("#bandeau-exemple"), true);
+  assert.equal(await page.textContent("#statut"), "En cours");
+  assert.equal(await page.textContent("#indicateurs"), "12 sur 41");
+  assert.equal(await page.textContent("#pourcent"), "29 %");
+  assert.match(await page.textContent("#ecoule"), /^28 min \d+ s$/);
+  assert.equal(await page.textContent("#tache"), "B2 — Diversité structurale");
+  for (const b of ["#btn-annuler", "#btn-relancer", "#btn-rafraichir"]) assert.equal(await page.isVisible(b), false, b);
+  assert.match(await page.textContent("#fraicheur"), /sans suivi en direct/);
+  await capture(page, "calcul-exemple");
+  await ctx.close();
+});
+
+await test("Calcul : suivi en direct, annulation, fin, échec et relance", async () => {
+  const { ctx, page } = await ouvrir("/calcul-direct/", { claude: claudeSimule });
+  await page.waitForFunction(() => window.__watch);
+  const watch = (await page.evaluate(() => window.__appels))[0];
+  assert.deepEqual([watch.server, watch.tool, watch.input.projet, watch.opts.refetchInterval], ["nemeton", "etat_calcul", "p-test", 30000]);
+
+  await page.evaluate((ev) => window.__emettre(ev), etat("en_cours", { progression: 10, progression_max: 40, indicateurs_faits: 10, indicateurs_total: 41, tache: "C1 — Biomasse", ecoule_s: 3725 }));
+  assert.equal(await page.textContent("#statut"), "En cours");
+  assert.equal(await page.textContent("#pourcent"), "25 %");
+  assert.match(await page.textContent("#ecoule"), /^1 h 2 min$/);
+  assert.match(await page.textContent("#fraicheur"), /Suivi en direct/);
+
+  // Annuler demande confirmation, puis appelle annuler_calcul ; le calcul
+  // tourne encore jusqu'au prochain indicateur.
+  await page.evaluate(() => { window.__etat = { ok: true, projet: "p-test", statut: "en_cours", indicateurs_faits: 11, indicateurs_total: 41 }; });
+  await page.click("#btn-annuler");
+  assert.equal(await page.isVisible("#confirmer"), true);
+  await page.click("#btn-confirmer");
+  await page.waitForFunction(() => window.__appels.some((a) => a.tool === "annuler_calcul"));
+  assert.match(await page.textContent("#message"), /Annulation demandée/);
+
+  // Fin du calcul : invitation à ouvrir l'Atlas, suivi arrêté.
+  await page.evaluate((ev) => window.__emettre(ev), etat("termine", { ecoule_s: 5400 }));
+  assert.equal(await page.isVisible("#suite"), true);
+  assert.equal(await page.textContent("#invite"), "Ouvre l'Atlas du projet Forêt de test");
+  assert.equal(await page.textContent("#pourcent"), "100 %");
+  assert.equal(await page.textContent("#message"), "", "message d'annulation effacé à la fin");
+  assert.equal(await page.isVisible("#bloc-tache"), false);
+  assert.equal(await page.getAttribute("#btn-relancer", "class"), "nv-bouton");
+  assert.ok((await page.evaluate(() => window.__appels)).some((a) => a.type === "fin_watch"));
+  await capture(page, "calcul-termine");
+
+  // Échec (relu par Rafraîchir) : journal affiché, relance possible.
+  await page.evaluate(() => { window.__etat = { ok: true, projet: "p-test", statut: "echec", erreur: "Mémoire épuisée", log: ["ligne 1", "ligne 2"] }; });
+  await page.click("#btn-rafraichir");
+  await page.waitForSelector("#bloc-journal:not([hidden])");
+  assert.equal(await page.textContent("#erreur"), "Mémoire épuisée");
+  assert.equal(await page.textContent("#journal"), "ligne 1\nligne 2");
+  // lancer_calcul écrit le statut « lancement » avant de rendre la main.
+  await page.evaluate(() => { window.__etat = { ok: true, projet: "p-test", statut: "lancement" }; });
+  await page.click("#btn-relancer");
+  await page.waitForFunction(() => window.__appels.some((a) => a.tool === "lancer_calcul"));
+  await page.waitForFunction(() => window.__watch);
+  await page.waitForFunction(() => document.getElementById("statut").textContent === "Lancement");
+  assert.equal(await page.isVisible("#bloc-journal"), false);
+  await ctx.close();
+});
+
+await test("Calcul : connecteur absent ou refusé, sombre, EN, téléphone 400 px", async () => {
+  const { ctx, page } = await ouvrir("/calcul-direct/", { claude: claudeSimule, theme: "dark", viewport: { width: 400, height: 800 } });
+  await page.waitForFunction(() => window.__watch);
+  await page.evaluate((ev) => window.__emettre(ev), etat("en_cours", { indicateurs_faits: 3, indicateurs_total: 41 }));
+  await page.evaluate(() => window.__emettre({ type: "error", error: { code: "server_not_connected", message: "x" } }));
+  assert.match(await page.textContent("#message"), /Ajoutez le connecteur « nemeton »/);
+  assert.equal(await page.textContent("#statut"), "État inconnu");
+  await page.click("#lang-en");
+  assert.equal(await page.textContent("#statut"), "Unknown status");
+  assert.match(await page.textContent("#message"), /Add the “nemeton” connector/);
+  const deborde = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+  assert.equal(deborde, false);
+  await capture(page, "calcul-mobile-sombre");
+  await ctx.close();
+
+  // Sans capacité mcp du tout : explication, pas de bouton.
+  const sans = await ouvrir("/calcul-direct/");
+  await sans.page.waitForSelector("#sans-connecteur:not([hidden])", { timeout: 15000 });
+  assert.equal(await sans.page.isVisible("#btn-annuler"), false);
+  await sans.ctx.close();
 });
 
 await navigateur.close();

@@ -113,3 +113,12 @@ test_that(".ecrire_geojson et .ajouter_entete produisent un FeatureCollection RF
   expect_length(gj$features, 1)
   expect_equal(gj$features[[1]]$properties$ug_id, "u1")
 })
+
+test_that(".durees_calcul compte depuis le lancement, ou jusqu'a la fin", {
+  t0 <- as.POSIXct("2026-10-06 10:00:00")
+  expect_equal(.durees_calcul(list(lance_a = "2026-10-06T09:58:30"), t0)$ecoule_s, 90)
+  expect_equal(.durees_calcul(list(lance_a = "2026-10-06T09:00:00", fin_a = "2026-10-06T09:30:00"), t0)$ecoule_s, 1800)
+  expect_null(.durees_calcul(list(), t0)$ecoule_s)
+  expect_null(.durees_calcul(list(lance_a = "n'importe quoi"), t0)$ecoule_s)
+  expect_match(.durees_calcul(list(), t0)$maintenant, "^2026-10-06T10:00:00[+-][0-9]{4}$")
+})

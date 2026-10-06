@@ -322,8 +322,37 @@
     return Promise.resolve(null);
   };
 
-  /** Nom du serveur MCP local déclaré par le plugin (.mcp.json → "nemeton"). */
+  /*
+   * Serveur nemeton appelé par NV.appeler. Une vue déclare dans son manifeste
+   * le connecteur claude.ai distant (son nom affiché, lot 2), le serveur local
+   * de l'application de bureau (`host:nemeton`, lot 1), ou les deux.
+   * NV.connecter retient celui qui répond pour ce lecteur.
+   */
   NV.SERVEUR = "host:nemeton";
+
+  /**
+   * Choisit le serveur nemeton joignable : un connecteur distant d'abord
+   * (il sert tous les lecteurs autorisés d'une vue partagée), sinon le
+   * serveur local. Rend son nom, ou null si aucun ne répond ici.
+   */
+  NV.connecter = function (mcp) {
+    if (!mcp || typeof mcp.listTools !== "function") return Promise.resolve(null);
+    return mcp.listTools().then(function (r) {
+      var servis = ((r && r.servers) || []).filter(function (s) {
+        return s && s.server && s.tools && s.tools.length && s.kind !== "artifact";
+      }).map(function (s) { return s.server; });
+      var choix = servis.filter(function (n) { return n.indexOf("host:") !== 0; })[0] || servis[0] || null;
+      if (choix) NV.SERVEUR = choix;
+      return choix;
+    }, function () { return null; });
+  };
+
+  /** Capacité mcp reliée à un serveur nemeton, ou null. */
+  NV.capaciteNemeton = function () {
+    return NV.capacite("mcp").then(function (m) {
+      return NV.connecter(m).then(function (s) { return s ? m : null; });
+    });
+  };
 
   var messagesMcp = {
     server_not_connected: "mcp_non_connecte",
@@ -342,6 +371,9 @@
     if (err && err.nemeton) return err.message;
     var code = err && err.code;
     if (code === "tool_error") return NV.t("mcp_erreur_outil", { message: err.message || "" });
+    if ((code === "server_not_connected" || code === "selection_required") && NV.SERVEUR.indexOf("host:") !== 0) {
+      return NV.t("mcp_non_connecte_distant", { serveur: NV.SERVEUR });
+    }
     return NV.t(messagesMcp[code] || "mcp_erreur", { code: code || "?" });
   };
 
@@ -391,6 +423,7 @@
   NV.textes({
     fr: {
       mcp_non_connecte: "Le connecteur nemeton ne répond pas ici : ouvrez cette vue dans l'application Claude de bureau où le serveur nemeton est installé.",
+      mcp_non_connecte_distant: "Ajoutez le connecteur « {serveur} » dans Réglages → Connecteurs de claude.ai, puis rouvrez cette vue.",
       mcp_reauth: "Reconnectez le connecteur nemeton dans Réglages → Connecteurs.",
       mcp_refuse: "L'accès au connecteur nemeton n'est pas autorisé pour cette vue. Vous pouvez l'activer dans le menu Autorisations de l'artéfact.",
       mcp_politique: "La politique de votre organisation bloque cet outil nemeton.",
@@ -401,6 +434,7 @@
     },
     en: {
       mcp_non_connecte: "The nemeton connector does not answer here: open this view in the Claude desktop app where the nemeton server is installed.",
+      mcp_non_connecte_distant: "Add the “{serveur}” connector in claude.ai Settings → Connectors, then reopen this view.",
       mcp_reauth: "Reconnect the nemeton connector in Settings → Connectors.",
       mcp_refuse: "Access to the nemeton connector is not allowed for this view. You can turn it on in the artifact's Permissions menu.",
       mcp_politique: "Your organization's policy blocks this nemeton tool.",

@@ -58,9 +58,11 @@
 }
 
 # Dossier ou sont ecrits les fichiers des vues (GeoJSON a joindre a un
-# artefact). `NEMETON_CLAUDE_VUES_DIR` l'emporte sur le cache utilisateur.
+# artefact). L'option `nemetonclaude.dossier_vues` (posee par le connecteur
+# distant en mode isolation, un dossier par utilisateur) l'emporte sur
+# `NEMETON_CLAUDE_VUES_DIR`, qui l'emporte sur le cache utilisateur.
 .dossier_vues <- function(...) {
-  racine <- Sys.getenv("NEMETON_CLAUDE_VUES_DIR", "")
+  racine <- getOption("nemetonclaude.dossier_vues", Sys.getenv("NEMETON_CLAUDE_VUES_DIR", ""))
   if (!nzchar(racine)) racine <- file.path(tools::R_user_dir("nemetonclaude", "cache"), "vues")
   d <- file.path(racine, ...)
   dir.create(d, recursive = TRUE, showWarnings = FALSE)

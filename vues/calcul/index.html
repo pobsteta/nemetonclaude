@@ -1,0 +1,373 @@
+<title>Calcul en cours</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&family=Spectral:wght@500;600&display=swap">
+<link rel="stylesheet" href="nemeton-view.css">
+<style>
+  /* Vue 2 : suivi d'un calcul long, lisible depuis un téléphone. */
+  .cal {
+    display: flex; flex-direction: column; gap: 16px;
+    box-sizing: border-box; width: 100%; max-width: 640px; margin: 0 auto;
+    padding: 18px var(--nv-gouttiere) 28px;
+  }
+  .cal *, .cal *::before, .cal *::after { box-sizing: border-box; }
+  .cal__carte {
+    background: var(--nv-surface); border: 1px solid var(--nv-trait);
+    border-radius: var(--nv-r); box-shadow: var(--nv-ombre);
+    padding: 18px; display: flex; flex-direction: column; gap: 14px;
+  }
+  .cal__statut { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .cal__pastille {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-weight: 700; font-size: 15px; padding: 4px 10px; border-radius: 999px;
+    background: var(--nv-surface-2); color: var(--nv-encre);
+  }
+  .cal__pastille::before {
+    content: ""; width: 9px; height: 9px; border-radius: 50%; background: currentColor;
+  }
+  .cal__pastille[data-statut="en_cours"], .cal__pastille[data-statut="lancement"] { color: var(--nv-action-encre); background: var(--nv-action-voile); }
+  .cal__pastille[data-statut="en_cours"]::before { animation: cal-pouls 1.6s ease-in-out infinite; }
+  .cal__pastille[data-statut="termine"] { color: var(--nv-action-encre); background: var(--nv-action-voile); }
+  .cal__pastille[data-statut="echec"] { color: var(--nv-alerte); background: color-mix(in srgb, var(--nv-alerte) 12%, transparent); }
+  .cal__pastille[data-statut="annule"], .cal__pastille[data-statut="aucun"] { color: var(--nv-encre-2); }
+  @keyframes cal-pouls { 50% { opacity: 0.25; } }
+  @media (prefers-reduced-motion: reduce) { .cal__pastille::before { animation: none !important; } }
+
+  .cal__barre { height: 12px; border-radius: 6px; background: var(--nv-surface-2); overflow: hidden; }
+  .cal__barre > span {
+    display: block; height: 100%; width: 0; border-radius: 6px; background: var(--nv-action);
+    transition: width 0.6s ease;
+  }
+  .cal__barre--indeterminee > span { width: 30% !important; animation: cal-glisse 1.8s ease-in-out infinite; }
+  @keyframes cal-glisse { 0% { transform: translateX(-100%); } 100% { transform: translateX(340%); } }
+  @media (prefers-reduced-motion: reduce) { .cal__barre > span { transition: none; animation: none !important; } }
+
+  .cal__chiffres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--nv-trait); border: 1px solid var(--nv-trait); border-radius: var(--nv-r); overflow: hidden; }
+  .cal__chiffres > div { background: var(--nv-surface); padding: 10px 12px; min-width: 0; }
+  .cal__chiffres .nv-chiffre { display: block; font-size: 22px; line-height: 1.15; overflow-wrap: anywhere; }
+  .cal__tache { margin: 0; font-size: 15px; overflow-wrap: anywhere; }
+  .cal__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .cal__journal {
+    margin: 0; max-height: 280px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere;
+    font: 12px/1.5 var(--nv-police-chiffres); background: var(--nv-surface-2);
+    border: 1px solid var(--nv-trait); border-radius: var(--nv-r); padding: 10px;
+  }
+  .cal__suite {
+    border: 1px solid var(--nv-action-encre); background: var(--nv-action-voile);
+    border-radius: var(--nv-r); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .cal__suite p { margin: 0; }
+  .cal__invite { font-family: var(--nv-police-chiffres); font-size: 13px; overflow-wrap: anywhere; }
+  .cal__exemple { font-size: 12px; color: var(--nv-encre-2); border: 1px dashed var(--nv-trait); border-radius: var(--nv-r); padding: 6px 8px; margin: 0; }
+  .cal__confirmer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  @media (max-width: 480px) {
+    .cal__chiffres { grid-template-columns: 1fr 1fr; }
+    .cal__chiffres > div:last-child { grid-column: 1 / -1; }
+  }
+</style>
+
+<div class="nv-app" style="grid-template-rows: auto 1fr;">
+  <header class="nv-entete">
+    <div class="nv-entete__titre">
+      <span class="nv-etiquette" data-t="surtitre">Calcul des indicateurs</span>
+      <h1 id="titre-projet" style="overflow-wrap:anywhere">—</h1>
+    </div>
+    <div class="nv-entete__outils">
+      <div class="nv-bascule" role="group" aria-label="Langue / Language">
+        <button type="button" id="lang-fr" aria-pressed="true">FR</button>
+        <button type="button" id="lang-en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="cal">
+    <p class="cal__exemple" id="bandeau-exemple" hidden data-t="exemple">Données fictives de démonstration.</p>
+
+    <section class="cal__carte" aria-labelledby="titre-etat">
+      <h2 id="titre-etat" class="nv-etiquette" data-t="etat" style="margin:0">État</h2>
+      <div class="cal__statut">
+        <span class="cal__pastille" id="statut" data-statut="aucun" role="status" aria-live="polite">—</span>
+        <span class="nv-muet" id="fraicheur" style="font-size:13px"></span>
+      </div>
+      <div>
+        <div class="cal__barre" id="barre" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-labelledby="titre-etat"><span></span></div>
+      </div>
+      <div class="cal__chiffres">
+        <div><span class="nv-etiquette" data-t="avancement">Avancement</span><span class="nv-chiffre" id="pourcent">—</span></div>
+        <div><span class="nv-etiquette" data-t="indicateurs">Indicateurs</span><span class="nv-chiffre" id="indicateurs">—</span></div>
+        <div><span class="nv-etiquette" data-t="ecoule">Temps écoulé</span><span class="nv-chiffre" id="ecoule">—</span></div>
+      </div>
+      <div id="bloc-tache">
+        <span class="nv-etiquette" data-t="tache">En cours</span>
+        <p class="cal__tache" id="tache">—</p>
+      </div>
+      <div class="cal__actions" id="actions">
+        <button type="button" class="nv-bouton" id="btn-annuler" hidden data-t="annuler">Annuler le calcul</button>
+        <button type="button" class="nv-bouton" id="btn-relancer" hidden data-t="relancer">Relancer le calcul</button>
+        <button type="button" class="nv-bouton nv-bouton--discret" id="btn-rafraichir" hidden data-t="rafraichir">Rafraîchir</button>
+      </div>
+      <div class="cal__confirmer" id="confirmer" hidden>
+        <span data-t="confirmer_annulation">Arrêter le calcul au prochain indicateur ?</span>
+        <button type="button" class="nv-bouton" id="btn-confirmer" data-t="oui_arreter">Oui, arrêter</button>
+        <button type="button" class="nv-bouton nv-bouton--discret" id="btn-garder" data-t="non_continuer">Non, continuer</button>
+      </div>
+      <p class="nv-statut" id="message" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="cal__suite" id="suite" hidden>
+      <p><strong data-t="termine_titre">Le calcul est terminé.</strong></p>
+      <p data-t="termine_texte">Pour explorer les résultats, demandez l'Atlas du projet à Claude :</p>
+      <p class="cal__invite" id="invite"></p>
+      <div class="cal__actions">
+        <button type="button" class="nv-bouton nv-bouton--action" id="btn-copier-invite" data-t="copier_invite">Copier la demande</button>
+      </div>
+    </section>
+
+    <section id="bloc-journal" hidden>
+      <h2 class="nv-etiquette" data-t="journal" style="margin:0 0 6px">Journal du calcul</h2>
+      <p class="nv-alerte" id="erreur" style="margin:0 0 8px"></p>
+      <pre class="cal__journal" id="journal"></pre>
+    </section>
+
+    <p class="nv-muet" id="sans-connecteur" hidden style="font-size:14px;margin:0"></p>
+  </main>
+</div>
+
+<script src="nemeton-view.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+
+  NV.textes({
+    fr: {
+      surtitre: "Calcul des indicateurs", etat: "État", avancement: "Avancement", indicateurs: "Indicateurs",
+      ecoule: "Temps écoulé", tache: "En cours", annuler: "Annuler le calcul", relancer: "Relancer le calcul",
+      rafraichir: "Rafraîchir", confirmer_annulation: "Arrêter le calcul au prochain indicateur ?",
+      oui_arreter: "Oui, arrêter", non_continuer: "Non, continuer", journal: "Journal du calcul",
+      termine_titre: "Le calcul est terminé.",
+      termine_texte: "Pour explorer les résultats, demandez l'Atlas du projet à Claude :",
+      copier_invite: "Copier la demande", invite: "Ouvre l'Atlas du projet {nom}",
+      copie: "Demande copiée : collez-la dans la conversation.", copie_manuelle: "Copiez la demande ci-dessus.",
+      exemple: "Données fictives de démonstration.",
+      s_lancement: "Lancement", s_en_cours: "En cours", s_termine: "Terminé", s_echec: "En échec",
+      s_annule: "Annulé", s_aucun: "Aucun calcul", s_inconnu: "État inconnu",
+      sur: "{n} sur {total}", maj: "Mis à jour à {heure}", fige: "État au {heure}, sans suivi en direct",
+      suivi: "Suivi en direct, toutes les 30 secondes environ",
+      annulation: "Annulation demandée : le calcul s'arrête au prochain indicateur.",
+      relance: "Calcul relancé.", envoi: "Envoi…",
+      sans_mcp: "Le suivi en direct passe par le connecteur nemeton, qui ne répond pas ici. Demandez l'état du calcul à Claude dans la conversation.",
+      projet_inconnu: "nemeton ne trouve pas ce projet : {message}",
+      erreur_donnees: "Impossible de lire les données de la vue : {message}",
+      h: "{h} h {m} min", min: "{m} min {s} s", s: "{s} s"
+    },
+    en: {
+      surtitre: "Indicator computation", etat: "Status", avancement: "Progress", indicateurs: "Indicators",
+      ecoule: "Elapsed", tache: "Now running", annuler: "Cancel the computation", relancer: "Restart the computation",
+      rafraichir: "Refresh", confirmer_annulation: "Stop the computation at the next indicator?",
+      oui_arreter: "Yes, stop", non_continuer: "No, keep going", journal: "Computation log",
+      termine_titre: "The computation is done.",
+      termine_texte: "To explore the results, ask Claude for the project's Atlas:",
+      copier_invite: "Copy the request", invite: "Open the Atlas of project {nom}",
+      copie: "Request copied: paste it in the conversation.", copie_manuelle: "Copy the request above.",
+      exemple: "Fictitious demonstration data.",
+      s_lancement: "Starting", s_en_cours: "Running", s_termine: "Done", s_echec: "Failed",
+      s_annule: "Cancelled", s_aucun: "No computation", s_inconnu: "Unknown status",
+      sur: "{n} of {total}", maj: "Updated at {heure}", fige: "Status as of {heure}, no live tracking",
+      suivi: "Live tracking, about every 30 seconds",
+      annulation: "Cancellation requested: the computation stops at the next indicator.",
+      relance: "Computation restarted.", envoi: "Sending…",
+      sans_mcp: "Live tracking goes through the nemeton connector, which does not answer here. Ask Claude for the computation status in the conversation.",
+      projet_inconnu: "nemeton cannot find this project: {message}",
+      erreur_donnees: "Cannot read the view's data: {message}",
+      h: "{h} h {m} min", min: "{m} min {s} s", s: "{s} s"
+    }
+  });
+
+  var meta = null;            // calcul.json : {projet, nom, etat?, exemple?}
+  var etat = null;            // dernière réponse d'etat_calcul
+  var recuA = 0;              // instant de réception (horloge du navigateur)
+  var stockeA = null;         // cache.storedAt d'une réponse rejouée
+  var mcp = null, arreter = null, minuteur = null;
+  var EN_COURS = { lancement: true, en_cours: true };
+  // Message courant : une fonction qui rend son texte, pour suivre la langue.
+  var message = null, messageErreur = false;
+  function signaler(texte, erreur) {
+    message = typeof texte === "function" ? texte : (texte ? function () { return texte; } : null);
+    messageErreur = !!erreur;
+    NV.annoncer($("message"), message ? message() : "", 0);
+  }
+  var REFUS = { needs_reauth: true, server_not_connected: true, blocked_by_policy: true, approval_required: true, not_in_manifest: true, selection_required: true };
+
+  function duree(s) {
+    if (s == null || !isFinite(s)) return "—";
+    s = Math.max(0, Math.round(s));
+    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+    if (h) return NV.t("h", { h: h, m: m });
+    if (m) return NV.t("min", { m: m, s: r });
+    return NV.t("s", { s: r });
+  }
+  function heure(ms) {
+    return new Date(ms).toLocaleTimeString(NV.lang === "en" ? "en-GB" : "fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  }
+
+  function ecoule() {
+    if (!etat || etat.ecoule_s == null) return null;
+    // Le serveur compte jusqu'à sa réponse ; on prolonge tant que le calcul tourne.
+    return etat.ecoule_s + (EN_COURS[etat.statut] && !stockeA ? (Date.now() - recuA) / 1000 : 0);
+  }
+
+  function rendre() {
+    var e = etat || {};
+    var statut = etat ? (e.statut || "aucun") : "inconnu";
+    var pastille = $("statut");
+    pastille.dataset.statut = statut;
+    pastille.textContent = NV.t("s_" + statut) !== "s_" + statut ? NV.t("s_" + statut) : statut;
+
+    var max = Number(e.progression_max), val = Number(e.progression);
+    var pct = isFinite(max) && max > 0 && isFinite(val) ? Math.max(0, Math.min(100, (val / max) * 100)) : null;
+    if (statut === "termine") pct = 100;
+    var barre = $("barre");
+    barre.classList.toggle("cal__barre--indeterminee", pct == null && !!EN_COURS[statut] && !NV.mouvementReduit());
+    barre.firstElementChild.style.width = (pct == null ? 0 : pct) + "%";
+    if (pct == null) barre.removeAttribute("aria-valuenow"); else barre.setAttribute("aria-valuenow", Math.round(pct));
+    $("pourcent").textContent = pct == null ? "—" : NV.nombre(pct, 0) + " %";
+    $("indicateurs").textContent = e.indicateurs_total ? NV.t("sur", { n: NV.nombre(e.indicateurs_faits || 0), total: NV.nombre(e.indicateurs_total) }) : "—";
+    $("ecoule").textContent = duree(ecoule());
+    $("tache").textContent = e.tache || e.phase || "—";
+
+    var vivant = !!mcp && !meta.exemple;
+    $("btn-annuler").hidden = !vivant || !EN_COURS[statut];
+    $("btn-relancer").hidden = !vivant || EN_COURS[statut] || !etat;
+    // Relancer est l'action principale après un échec, pas après un succès.
+    $("btn-relancer").classList.toggle("nv-bouton--action", statut !== "termine");
+    $("bloc-tache").hidden = !EN_COURS[statut];
+    $("btn-rafraichir").hidden = !vivant;
+    if ($("btn-annuler").hidden) $("confirmer").hidden = true;
+
+    $("suite").hidden = statut !== "termine";
+    $("invite").textContent = NV.t("invite", { nom: meta.nom || meta.projet });
+
+    var journal = Array.isArray(e.log) ? e.log : (e.log ? [e.log] : []);
+    $("bloc-journal").hidden = statut !== "echec";
+    $("erreur").textContent = e.erreur || "";
+    $("erreur").hidden = !e.erreur;
+    $("journal").textContent = journal.join("\n");
+    $("journal").hidden = !journal.length;
+
+    var f = $("fraicheur");
+    if (!etat) f.textContent = "";
+    else if (!vivant) f.textContent = NV.t("fige", { heure: heure(stockeA || recuA) });
+    else f.textContent = NV.t("maj", { heure: heure(stockeA || recuA) }) + (arreter ? " · " + NV.t("suivi") : "");
+
+    clearInterval(minuteur);
+    if (EN_COURS[statut]) minuteur = setInterval(function () { $("ecoule").textContent = duree(ecoule()); }, 1000);
+  }
+
+  function recevoir(res) {
+    var p = res && res.payload;
+    if (typeof p === "string") { try { p = JSON.parse(p); } catch (x) { /* texte brut */ } }
+    if (!p || typeof p !== "object") return;
+    if (p.ok === false) {
+      signaler(function () { return NV.t("projet_inconnu", { message: p.erreur || "" }); }, true);
+      return;
+    }
+    var avant = etat && etat.statut;
+    etat = p;
+    recuA = Date.now();
+    stockeA = res.cache && res.cache.storedAt ? res.cache.storedAt : null;
+    // Un message d'erreur, ou d'action, ne survit pas à un changement d'état.
+    if (messageErreur || (avant && avant !== p.statut)) signaler(null);
+    rendre();
+    // Calcul fini : plus rien à suivre.
+    if (!EN_COURS[p.statut] && arreter && !(res.cache && res.cache.revalidating)) suivre(false);
+  }
+
+  function suivre(oui) {
+    if (arreter) { arreter(); arreter = null; }
+    if (!oui || !mcp) { rendre(); return; }
+    arreter = mcp.watchTool(NV.SERVEUR, "etat_calcul", { projet: meta.projet }, function (ev) {
+      if (ev.type === "data") return recevoir(ev.result);
+      var err = ev.error || {};
+      if (REFUS[err.code]) { etat = null; suivre(false); }
+      signaler(function () { return NV.messageMcp(err); }, true);
+      rendre();
+    }, { refetchInterval: 30000 });
+    rendre();
+  }
+
+  function rafraichir() {
+    if (!mcp) return;
+    mcp.callTool(NV.SERVEUR, "etat_calcul", { projet: meta.projet }, { cache: { refresh: true } })
+      .then(function (res) {
+        recevoir(res);
+        if (EN_COURS[etat && etat.statut] && !arreter) suivre(true);
+      })
+      .catch(function (e) { signaler(function () { return NV.messageMcp(e); }, true); });
+  }
+
+  /* ---------------------------------------------- actions */
+  $("btn-annuler").addEventListener("click", function () {
+    $("confirmer").hidden = false;
+    $("btn-garder").focus();
+  });
+  $("btn-garder").addEventListener("click", function () { $("confirmer").hidden = true; $("btn-annuler").focus(); });
+  $("btn-confirmer").addEventListener("click", function () {
+    var b = this; b.disabled = true;
+    signaler(function () { return NV.t("envoi"); });
+    NV.appeler(mcp, "annuler_calcul", { projet: meta.projet })
+      .then(function () { $("confirmer").hidden = true; signaler(function () { return NV.t("annulation"); }); rafraichir(); })
+      .catch(function (e) { signaler(function () { return NV.messageMcp(e); }, true); })
+      .then(function () { b.disabled = false; });
+  });
+  $("btn-relancer").addEventListener("click", function () {
+    var b = this; b.disabled = true;
+    signaler(function () { return NV.t("envoi"); });
+    NV.appeler(mcp, "lancer_calcul", { projet: meta.projet })
+      .then(function () { signaler(function () { return NV.t("relance"); }); suivre(true); rafraichir(); })
+      .catch(function (e) { signaler(function () { return NV.messageMcp(e); }, true); })
+      .then(function () { b.disabled = false; });
+  });
+  $("btn-rafraichir").addEventListener("click", rafraichir);
+  $("btn-copier-invite").addEventListener("click", function () {
+    var texte = $("invite").textContent;
+    NV.copier(texte).then(function (ok) { NV.annoncer($("message"), NV.t(ok ? "copie" : "copie_manuelle")); });
+  });
+
+  /* ---------------------------------------------- langue */
+  function majLangue() {
+    NV.traduire();
+    $("lang-fr").setAttribute("aria-pressed", String(NV.lang === "fr"));
+    $("lang-en").setAttribute("aria-pressed", String(NV.lang === "en"));
+    if (message) NV.annoncer($("message"), message(), 0);
+    if (meta) rendre();
+  }
+  $("lang-fr").addEventListener("click", function () { NV.changerLangue("fr"); majLangue(); });
+  $("lang-en").addEventListener("click", function () { NV.changerLangue("en"); majLangue(); });
+
+  /* ---------------------------------------------- démarrage */
+  NV.charger("calcul.json").then(function (m) {
+    if (!m || !m.projet) throw new Error("calcul.json");
+    meta = m;
+    $("titre-projet").textContent = m.nom || m.projet;
+    document.title = NV.t("surtitre") + " · " + (m.nom || m.projet);
+    $("bandeau-exemple").hidden = !m.exemple;
+    // État figé au moment de la publication : affiché tout de suite, remplacé
+    // par le suivi en direct dès que le connecteur répond.
+    if (m.etat) { etat = m.etat; recuA = m.etat_recu_a ? Date.parse(m.etat_recu_a) || Date.now() : Date.now(); }
+    majLangue();
+    if (m.exemple) return;
+    return NV.capaciteNemeton().then(function (c) {
+      mcp = c;
+      if (!mcp) { $("sans-connecteur").hidden = false; $("sans-connecteur").textContent = NV.t("sans_mcp"); rendre(); return; }
+      if (!etat || EN_COURS[etat.statut]) suivre(true); else rafraichir();
+    });
+  }).catch(function (e) {
+    var a = document.createElement("p");
+    a.className = "nv-alerte";
+    a.textContent = NV.t("erreur_donnees", { message: e.message });
+    $("message").replaceWith(a);
+  });
+  majLangue();
+})();
+</script>

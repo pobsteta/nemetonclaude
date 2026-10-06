@@ -7,13 +7,15 @@ Description: Etend le serveur MCP de 'nemetonshiny' avec les outils du
     parcours de creation de projet (recherche de commune, parcelles
     cadastrales, creation) et ceux qui alimentent les vues publiees dans
     Claude (Atlas du projet, contexte cartographique, detail d'un
-    indicateur). Lot 1 du brief specs/BRIEF-visualisation-nemeton-claude.md.
+    indicateur). Sert ces outils en local (stdio) ou a distance (HTTP,
+    authentification Keycloak) pour un connecteur claude.ai. Lots 1 et 2 du
+    brief specs/BRIEF-visualisation-nemeton-claude.md.
 License: EUPL-1.2
 Encoding: UTF-8
 Depends: R (>= 4.1.0)
 Imports: nemetonshiny (>= 1.0.0), nemeton (>= 1.0.0), sf, jsonlite, httr2,
-    cli, ellmer
-Suggests: mcptools, happign, testthat (>= 3.0.0), withr
+    cli, ellmer, rlang, openssl, jose, httpuv
+Suggests: mcptools (>= 1.0.3), happign, testthat (>= 3.0.0), withr
 Remotes: pobsteta/nemetonshiny, pobsteta/nemeton@*release
 Config/testthat/edition: 3
 Roxygen: list(markdown = TRUE)
