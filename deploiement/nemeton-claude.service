@@ -1,0 +1,24 @@
+# Service systemd du connecteur nemeton distant.
+# /etc/systemd/system/nemeton-claude.service, puis :
+#   systemctl daemon-reload && systemctl enable --now nemeton-claude
+[Unit]
+Description=Connecteur MCP nemeton pour Claude (HTTP, Keycloak)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=nemeton
+Group=nemeton
+EnvironmentFile=/etc/nemeton-claude.env
+ExecStart=/usr/bin/Rscript -e "nemetonclaude::serveur_mcp_distant()"
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+# Lecture seule plutot que masque : les paquets R installes dans ~/R restent lisibles.
+ProtectHome=read-only
+ReadWritePaths=/srv/nemeton
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

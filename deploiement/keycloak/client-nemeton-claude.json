@@ -1,0 +1,37 @@
+{
+  "clientId": "nemeton-claude",
+  "name": "nemeton dans Claude",
+  "description": "Connecteur MCP distant de nemeton pour claude.ai (nemetonclaude).",
+  "protocol": "openid-connect",
+  "enabled": true,
+  "publicClient": false,
+  "clientAuthenticatorType": "client-secret",
+  "standardFlowEnabled": true,
+  "implicitFlowEnabled": false,
+  "directAccessGrantsEnabled": false,
+  "serviceAccountsEnabled": false,
+  "consentRequired": false,
+  "redirectUris": [
+    "https://claude.ai/api/mcp/auth_callback",
+    "https://claude.com/api/mcp/auth_callback"
+  ],
+  "webOrigins": [],
+  "attributes": {
+    "pkce.code.challenge.method": "S256"
+  },
+  "defaultClientScopes": ["basic", "profile", "email", "roles"],
+  "optionalClientScopes": ["offline_access"],
+  "protocolMappers": [
+    {
+      "name": "audience nemeton-claude",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-audience-mapper",
+      "config": {
+        "included.custom.audience": "nemeton-claude",
+        "access.token.claim": "true",
+        "id.token.claim": "false",
+        "introspection.token.claim": "true"
+      }
+    }
+  ]
+}

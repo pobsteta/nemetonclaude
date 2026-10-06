@@ -1,6 +1,7 @@
 // Génère les données FICTIVES des vues (aucune donnée réelle) :
 //   vues/exemples/selection/{selection.json, commune.geojson, sections.geojson, parcelles.geojson}
 //   vues/exemples/atlas/{atlas.geojson, contexte.geojson}
+//   vues/exemples/calcul/calcul.json
 // Le catalogue des familles (vues/exemples/catalogue.json) est celui du cœur
 // nemeton (R/indicator-config.R) ; les valeurs, elles, sont tirées au hasard.
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
@@ -189,4 +190,15 @@ writeFileSync(join(at, "contexte.geojson"), JSON.stringify(fc([
   { type: "Feature", properties: { couche: "cours_eau", nature: "Ruisseau", nom: "Ruisseau fictif" },
     geometry: { type: "LineString", coordinates: ligne((t) => [LON0 + DX * (14 + 3 * Math.sin(t * 7)), LAT0 + t * NY * DY]) } }
 ])));
+// Calcul : état figé d'un calcul en cours, sans connecteur.
+const cal = join(ex, "calcul");
+mkdirSync(cal, { recursive: true });
+writeFileSync(join(cal, "calcul.json"), JSON.stringify({
+  exemple: true, projet: "20261006_101500_exmp", nom: "Forêt fictive de démonstration",
+  etat: {
+    ok: true, projet: "20261006_101500_exmp", statut: "en_cours", job_id: "20261006101502-abcd",
+    phase: "computing", progression: 12, progression_max: 41, indicateurs_faits: 12, indicateurs_total: 41,
+    tache: "B2 — Diversité structurale", ecoule_s: 1694
+  }
+}, null, 1) + "\n");
 console.log(`${propres.length} parcelles, ${features.length} UG d'exemple écrites dans vues/exemples/.`);

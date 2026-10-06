@@ -27,8 +27,24 @@ outils_mcp <- function() {
   projet_arg <- t("Project id, or its name (case and accents ignored).")
   langue_arg <- t("'fr' or 'en' (default 'fr').", required = FALSE)
 
-  existants <- .ns("mcp_tools")()
+  # Outils de lecture de nemetonshiny annotes « lecture seule » : la vue
+  # Calcul peut suivre etat_calcul (watchTool) sans confirmation a chaque
+  # interrogation dans l'application Claude.
+  # etat_calcul est remplace par etat_calcul_vue (memes entrees, durees en
+  # plus), declare plus bas.
+  existants <- lapply(.ns("mcp_tools")(), function(o) {
+    a <- .lecture_seule()
+    if (o@name %in% c("lister_projets", "resume_projet", "url_app") && !is.null(a)) {
+      o@annotations <- a
+    }
+    o
+  })
+  existants <- Filter(function(o) o@name != "etat_calcul", existants)
   nouveaux <- list(
+    .outil(etat_calcul_vue, "etat_calcul",
+      "State of a project's background computation: status (lancement, en_cours, termine, echec, annule, aucun), progress, indicators done and total, current task, elapsed seconds (ecoule_s, computed by the server), error and log tail on failure.",
+      list(projet = projet_arg),
+      lecture = TRUE),
     .outil(chercher_commune, "chercher_commune",
       "Find the INSEE code of a French commune from its department (code or name) and its name. Several matches (homonyms, delegated communes): returns candidates with choix_requis = true; ask the user, never pick for them. Use insee_cadastre for the cadastre.",
       list(departement = t("Department code ('21', '2A', '974') or name ('Cote-d'Or')."),
@@ -82,4 +98,33 @@ serveur_mcp <- function() {
     stop("Le paquet 'mcptools' est requis : install.packages(\"mcptools\").", call. = FALSE)
   }
   mcptools::mcp_server(tools = outils_mcp(), session_tools = FALSE)
+}
+
+#' State of a project's computation, for the Calcul view
+#'
+#' nemetonshiny's `etat_calcul`, plus `ecoule_s` (seconds since launch, or
+#' launch to end once finished) and `maintenant`. Launch and end times are
+#' local server times without time zone: the view cannot read them, so the
+#' server computes the duration.
+#'
+#' @param projet Project id or name.
+#' @return JSON, as nemetonshiny's `etat_calcul`.
+#' @export
+etat_calcul_vue <- function(projet) {
+  texte <- .ns("mcp_etat_calcul")(projet)
+  x <- tryCatch(jsonlite::fromJSON(texte, simplifyVector = FALSE), error = function(e) NULL)
+  if (!isTRUE(x$ok)) return(texte)
+  .json(c(x, .durees_calcul(x)))
+}
+
+.durees_calcul <- function(x, maintenant = Sys.time()) {
+  lire <- function(s) {
+    if (is.null(s)) return(NA)
+    suppressWarnings(as.POSIXct(s, format = "%Y-%m-%dT%H:%M:%S"))
+  }
+  debut <- lire(x$lance_a)
+  fin <- lire(x$fin_a)
+  ecoule <- if (is.na(debut)) NULL else max(0, round(as.numeric(difftime(
+    if (is.na(fin)) maintenant else fin, debut, units = "secs"))))
+  list(ecoule_s = ecoule, maintenant = format(maintenant, "%Y-%m-%dT%H:%M:%S%z"))
 }

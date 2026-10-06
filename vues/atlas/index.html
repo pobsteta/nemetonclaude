@@ -625,7 +625,7 @@
       a.style.cssText = "position:absolute;z-index:900;left:12px;right:12px;bottom:22px;background:var(--nv-surface)";
     });
 
-  NV.capacite("mcp").then(function (m) { mcp = m; $("btn-gpkg").hidden = !m; if (donnees) rendreFiche(); });
+  NV.capaciteNemeton().then(function (m) { mcp = m; $("btn-gpkg").hidden = !m; if (donnees) rendreFiche(); });
   NV.capacite("sample").then(function (s) { sample = s; $("bloc-claude").hidden = !s; });
   NV.capacite("downloads").then(function (d) { downloads = d; $("btn-csv").hidden = !d; });
   majLangue();

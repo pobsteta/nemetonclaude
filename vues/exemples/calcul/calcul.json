@@ -1,0 +1,18 @@
+{
+ "exemple": true,
+ "projet": "20261006_101500_exmp",
+ "nom": "Forêt fictive de démonstration",
+ "etat": {
+  "ok": true,
+  "projet": "20261006_101500_exmp",
+  "statut": "en_cours",
+  "job_id": "20261006101502-abcd",
+  "phase": "computing",
+  "progression": 12,
+  "progression_max": 41,
+  "indicateurs_faits": 12,
+  "indicateurs_total": 41,
+  "tache": "B2 — Diversité structurale",
+  "ecoule_s": 1694
+ }
+}

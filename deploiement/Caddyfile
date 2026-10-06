@@ -1,0 +1,8 @@
+# Proxy HTTPS devant le connecteur nemeton distant. Caddy obtient et
+# renouvelle seul le certificat (Let's Encrypt) : le nom doit pointer vers
+# cette machine et les ports 80 et 443 être ouverts.
+nemeton.example.org {
+	encode gzip
+	# Le serveur R n'ecoute qu'en local, en HTTP.
+	reverse_proxy 127.0.0.1:8765
+}
