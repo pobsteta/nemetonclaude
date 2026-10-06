@@ -45,10 +45,21 @@ serveur doit tourner dans une locale UTF-8.
 ### Plugin Claude Code
 
 ```bash
-claude plugin install <chemin ou URL de ce dépôt>
+claude --plugin-dir <chemin de ce dépôt>   # charge le plugin pour la session
 ```
 
 Le plugin apporte le serveur MCP `nemeton` et le skill `nemeton-vues`.
+
+## Tout essayer d'un coup
+
+```bash
+outils/essayer.sh          # connecteur R (installe nemetonshiny >= 1.0.0 si besoin),
+                           # tests des vues, puis aperçu sur http://localhost:8765
+outils/essayer.sh claude   # Claude Code avec le plugin chargé
+```
+
+Étapes séparées : `outils/essayer.sh r`, `vues`, `apercu` (`--help` pour le
+détail).
 
 ## Essayer les vues sans nemeton
 
