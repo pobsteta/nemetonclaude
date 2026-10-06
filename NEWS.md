@@ -1,3 +1,8 @@
+# nemetonclaude 0.2.0 (2026-10-06)
+
+- Lot 2 : connecteur distant (HTTP, Keycloak) et vue Calcul (#5)
+- Passe les actions GitHub en Node.js 24 et fixe Ubuntu 24.04 (#4)
+
 # nemetonclaude 0.1.0 (2026-10-06)
 
 Première version : lot 1 du brief `specs/BRIEF-visualisation-nemeton-claude.md`.
