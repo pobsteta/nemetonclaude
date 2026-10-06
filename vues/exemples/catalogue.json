@@ -1,0 +1,508 @@
+[
+ {
+  "code": "C",
+  "nom_fr": "Carbone & Vitalité",
+  "nom_en": "Carbon & Vitality",
+  "couleur": "#228B22",
+  "indicateurs": [
+   {
+    "code": "C1",
+    "colonne": "indicateur_c1_biomasse",
+    "colonne_norm": "indicateur_c1_biomasse_norm",
+    "statut": ".c1_status",
+    "label_fr": "Biomasse carbone (tC/ha)",
+    "label_en": "Carbon Biomass (tC/ha)",
+    "aide_fr": "Stock de carbone dans la biomasse aérienne (troncs, branches, feuilles). Estimé à partir de données LiDAR ou de modèles forestiers. Valeurs typiques : 50-200 tC/ha.",
+    "aide_en": "Carbon stock in above-ground biomass (trunks, branches, leaves). Estimated from LiDAR data or forest models. Typical values: 50-200 tC/ha."
+   },
+   {
+    "code": "C2",
+    "colonne": "indicateur_c2_ndvi",
+    "colonne_norm": "indicateur_c2_ndvi_norm",
+    "statut": ".c2_status",
+    "label_fr": "NDVI - Vitalité",
+    "label_en": "NDVI - Vitality",
+    "aide_fr": "Indice de végétation par différence normalisée (NDVI). Mesure la vitalité et l'activité photosynthétique de la végétation. Valeurs de 0 (sol nu) à 1 (végétation dense).",
+    "aide_en": "Normalized Difference Vegetation Index (NDVI). Measures vegetation vitality and photosynthetic activity. Values from 0 (bare soil) to 1 (dense vegetation)."
+   }
+  ]
+ },
+ {
+  "code": "B",
+  "nom_fr": "Biodiversité",
+  "nom_en": "Biodiversity",
+  "couleur": "#9932CC",
+  "indicateurs": [
+   {
+    "code": "B1",
+    "colonne": "indicateur_b1_protection",
+    "colonne_norm": "indicateur_b1_protection_norm",
+    "statut": ".b1_status",
+    "label_fr": "Protection biodiversité",
+    "label_en": "Biodiversity Protection",
+    "aide_fr": "Niveau de protection réglementaire (ZNIEFF, Natura 2000, Réserves). Score de 0 (aucune protection) à 100 (protection maximale).",
+    "aide_en": "Level of regulatory protection (ZNIEFF, Natura 2000, Reserves). Score from 0 (no protection) to 100 (maximum protection)."
+   },
+   {
+    "code": "B2",
+    "colonne": "indicateur_b2_structure",
+    "colonne_norm": "indicateur_b2_structure_norm",
+    "statut": ".b2_status",
+    "label_fr": "Diversité structurale",
+    "label_en": "Structural Diversity",
+    "aide_fr": "Diversité des strates verticales et horizontales du peuplement. Basé sur l'hétérogénéité des hauteurs et des essences.",
+    "aide_en": "Diversity of vertical and horizontal stand structure. Based on height and species heterogeneity."
+   },
+   {
+    "code": "B3",
+    "colonne": "indicateur_b3_connectivite",
+    "colonne_norm": "indicateur_b3_connectivite_norm",
+    "statut": ".b3_status",
+    "label_fr": "Connectivité écologique",
+    "label_en": "Ecological Connectivity",
+    "aide_fr": "Capacité de la parcelle à servir de corridor écologique. Mesure la continuité forestière et la proximité d'autres habitats naturels.",
+    "aide_en": "Parcel's capacity to serve as an ecological corridor. Measures forest continuity and proximity to other natural habitats."
+   },
+   {
+    "code": "B4",
+    "colonne": "indicateur_b4_div_spectrale",
+    "colonne_norm": "indicateur_b4_div_spectrale_norm",
+    "statut": ".b4_status",
+    "label_fr": "Diversité spectrale",
+    "label_en": "Spectral Diversity",
+    "aide_fr": "Diversité spectrale (α) dérivée de Sentinel-2 : indice de Shannon des « spectral species » par fenêtre de 100 m, moyenné sur l’unité. Le score atteint 100 pour l’équivalent de 10 spectral species également abondantes par hectare. Proxy à valider terrain ; une futaie régulière monospécifique légitime peut avoir un score bas.",
+    "aide_en": "Spectral (α) diversity from Sentinel-2: Shannon index of spectral species over 100 m windows, averaged over the unit. The score reaches 100 for the equivalent of 10 equally abundant spectral species per hectare. Proxy pending field validation; a legitimate even-aged monospecific stand may score low."
+   }
+  ]
+ },
+ {
+  "code": "W",
+  "nom_fr": "Eau",
+  "nom_en": "Water",
+  "couleur": "#1E90FF",
+  "indicateurs": [
+   {
+    "code": "W1",
+    "colonne": "indicateur_w1_reseau",
+    "colonne_norm": "indicateur_w1_reseau_norm",
+    "statut": ".w1_status",
+    "label_fr": "Réseau hydrographique",
+    "label_en": "Water Network",
+    "aide_fr": "Densité et proximité du réseau hydrographique (cours d'eau, lacs). Impact sur la biodiversité aquatique et la régulation hydrique.",
+    "aide_en": "Density and proximity of water network (streams, lakes). Impact on aquatic biodiversity and water regulation."
+   },
+   {
+    "code": "W2",
+    "colonne": "indicateur_w2_zones_humides",
+    "colonne_norm": "indicateur_w2_zones_humides_norm",
+    "statut": ".w2_status",
+    "label_fr": "Zones humides",
+    "label_en": "Wetlands",
+    "aide_fr": "Présence et proximité de zones humides inventoriées. Milieux à forte valeur écologique pour la biodiversité et le stockage de carbone.",
+    "aide_en": "Presence and proximity of inventoried wetlands. High ecological value habitats for biodiversity and carbon storage."
+   },
+   {
+    "code": "W3",
+    "colonne": "indicateur_w3_humidite",
+    "colonne_norm": "indicateur_w3_humidite_norm",
+    "statut": ".w3_status",
+    "label_fr": "Indice topographique d'humidité",
+    "label_en": "Topographic Wetness Index",
+    "aide_fr": "Indice topographique d'humidité (TWI). Prédit l'accumulation d'eau selon la topographie. Valeurs élevées = zones potentiellement humides.",
+    "aide_en": "Topographic Wetness Index (TWI). Predicts water accumulation based on topography. High values = potentially wet areas."
+   },
+   {
+    "code": "W4",
+    "colonne": "indicateur_w4_vpd",
+    "colonne_norm": "indicateur_w4_vpd_norm",
+    "statut": ".w4_status",
+    "label_fr": "Déficit hydrique sous couvert",
+    "label_en": "Under-canopy water deficit",
+    "aide_fr": "Déficit de pression de vapeur (VPD) estival sous couvert (microclimf, augmenté LiDAR). Sécheresse atmosphérique ressentie par les semis. Score élevé = air plus humide.",
+    "aide_en": "Summer vapour-pressure deficit (VPD) under the canopy (microclimf, LiDAR-augmented). Atmospheric dryness felt by seedlings. High score = moister air."
+   }
+  ]
+ },
+ {
+  "code": "A",
+  "nom_fr": "Air & Microclimat",
+  "nom_en": "Air & Microclimate",
+  "couleur": "#87CEEB",
+  "indicateurs": [
+   {
+    "code": "A1",
+    "colonne": "indicateur_a1_couverture",
+    "colonne_norm": "indicateur_a1_couverture_norm",
+    "statut": ".a1_status",
+    "label_fr": "Tampon forestier",
+    "label_en": "Forest Buffer",
+    "aide_fr": "Couverture forestière dans un rayon de 500m. Mesure la capacité de la forêt à atténuer les effets climatiques et filtrer l'air.",
+    "aide_en": "Forest cover within 500m radius. Measures the forest's capacity to mitigate climate effects and filter air."
+   },
+   {
+    "code": "A2",
+    "colonne": "indicateur_a2_qualite_air",
+    "colonne_norm": "indicateur_a2_qualite_air_norm",
+    "statut": ".a2_status",
+    "label_fr": "Qualité de l'air",
+    "label_en": "Air Quality",
+    "aide_fr": "Indice de qualité de l'air basé sur l'éloignement des sources de pollution et la densité forestière environnante.",
+    "aide_en": "Air quality index based on distance from pollution sources and surrounding forest density."
+   },
+   {
+    "code": "A3",
+    "colonne": "indicateur_a3_microclimat",
+    "colonne_norm": "indicateur_a3_microclimat_norm",
+    "statut": ".a3_status",
+    "label_fr": "Microclimat sous couvert",
+    "label_en": "Under-canopy microclimate",
+    "aide_fr": "Température maximale estivale sous couvert (microclimf, augmenté LiDAR). Pilote la régénération. Score élevé = plus frais. Fiable en relatif entre parcelles.",
+    "aide_en": "Summer maximum temperature under the canopy (microclimf, LiDAR-augmented). Drives regeneration. High score = cooler. Reliable in relative ranking."
+   },
+   {
+    "code": "A4",
+    "colonne": "indicateur_a4_tamponnement",
+    "colonne_norm": "indicateur_a4_tamponnement_norm",
+    "statut": ".a4_status",
+    "label_fr": "Tamponnement canopée",
+    "label_en": "Canopy buffering",
+    "aide_fr": "Tamponnement thermique de la canopée (écart T°max découvert − sous couvert). Score élevé = microsite mieux protégé de la chaleur.",
+    "aide_en": "Canopy thermal buffering (T°max open minus under canopy). High score = microsite better shielded from heat."
+   },
+   {
+    "code": "A5",
+    "colonne": "indicateur_a5_rafraichissement",
+    "colonne_norm": "indicateur_a5_rafraichissement_norm",
+    "statut": ".a5_status",
+    "label_fr": "Rafraîchissement urbain",
+    "label_en": "Urban cooling",
+    "aide_fr": "Rafraîchissement urbain : fraîcheur de surface (LST) de l'unité vs son environnement. Orienté arbre en ville (LST disponible en métropole). Score élevé = plus frais que l'entour. NA hors couverture LST.",
+    "aide_en": "Urban cooling: relative surface freshness (LST) of the unit vs its surroundings. Urban-tree oriented (LST available over metropolises). High score = cooler than surroundings. NA outside LST coverage."
+   }
+  ]
+ },
+ {
+  "code": "F",
+  "nom_fr": "Fertilité des Sols",
+  "nom_en": "Soil Fertility",
+  "couleur": "#8B4513",
+  "indicateurs": [
+   {
+    "code": "F1",
+    "colonne": "indicateur_f1_fertilite",
+    "colonne_norm": "indicateur_f1_fertilite_norm",
+    "statut": ".f1_status",
+    "label_fr": "Fertilité des sols",
+    "label_en": "Soil Fertility",
+    "aide_fr": "Potentiel de fertilité des sols basé sur les caractéristiques pédologiques (texture, profondeur, matière organique).",
+    "aide_en": "Soil fertility potential based on pedological characteristics (texture, depth, organic matter)."
+   },
+   {
+    "code": "F2",
+    "colonne": "indicateur_f2_erosion",
+    "colonne_norm": "indicateur_f2_erosion_norm",
+    "statut": ".f2_status",
+    "label_fr": "Risque d'érosion",
+    "label_en": "Erosion Risk",
+    "aide_fr": "Résistance à l'érosion des sols, dérivée de la topographie (indice d'humidité TWI, pente) et de la texture. Score élevé = faible risque.",
+    "aide_en": "Soil erosion resistance, from topography (TWI wetness index, slope) and texture. High score = low risk."
+   }
+  ]
+ },
+ {
+  "code": "L",
+  "nom_fr": "Paysage",
+  "nom_en": "Landscape",
+  "couleur": "#32CD32",
+  "indicateurs": [
+   {
+    "code": "L1",
+    "colonne": "indicateur_l1_effet_lisiere",
+    "colonne_norm": "indicateur_l1_effet_lisiere_norm",
+    "statut": ".l1_status",
+    "label_fr": "Sylvosphère (effet lisière)",
+    "label_en": "Sylvosphere (Edge Effect)",
+    "aide_fr": "Intensité de l'effet de lisière subi par la parcelle (sylvosphère) : forme du contour, contraste de la matrice voisine, exposition au vent et au soleil. Les lisières favorisent certaines espèces mais fragmentent l'habitat intérieur. Sens inversé : plus d'effet de lisière = indice plus bas.",
+    "aide_en": "Intensity of the edge effect borne by the parcel (sylvosphere): boundary shape, contrast of the surrounding matrix, wind and sun exposure. Edges favor some species but fragment interior habitat. Inverted sense: more edge effect = lower score."
+   },
+   {
+    "code": "L2",
+    "colonne": "indicateur_l2_morcellement",
+    "colonne_norm": "indicateur_l2_morcellement_norm",
+    "statut": ".l2_status",
+    "label_fr": "Fragmentation paysagère",
+    "label_en": "Landscape Fragmentation",
+    "aide_fr": "Niveau de fragmentation du paysage forestier environnant. Basé sur la taille et la connectivité des massifs forestiers proches.",
+    "aide_en": "Fragmentation level of surrounding forest landscape. Based on size and connectivity of nearby forest patches."
+   },
+   {
+    "code": "L3",
+    "colonne": "indicateur_l3_het_spectrale",
+    "colonne_norm": "indicateur_l3_het_spectrale_norm",
+    "statut": ".l3_status",
+    "label_fr": "Hétérogénéité spectrale",
+    "label_en": "Spectral Heterogeneity",
+    "aide_fr": "Hétérogénéité spectrale (β) du paysage dérivée de Sentinel-2 : dispersion des fenêtres de l’unité dans l’ordination (PCoA) de la dissimilarité Bray-Curtis entre « spectral species ». Mesure la diversité de la mosaïque (complémentaire de L2, morcellement géométrique). NA sous 3 fenêtres couvertes. Proxy à valider terrain.",
+    "aide_en": "Spectral (β) landscape heterogeneity from Sentinel-2: dispersion of the unit’s windows in the PCoA ordination of the Bray-Curtis dissimilarity between spectral species. Measures mosaic diversity (complementary to L2, geometric fragmentation). NA below 3 covered windows. Proxy pending field validation."
+   }
+  ]
+ },
+ {
+  "code": "T",
+  "nom_fr": "Dynamique Temporelle",
+  "nom_en": "Temporal Dynamics",
+  "couleur": "#FFD700",
+  "indicateurs": [
+   {
+    "code": "T1",
+    "colonne": "indicateur_t1_anciennete",
+    "colonne_norm": "indicateur_t1_anciennete_norm",
+    "statut": ".t1_status",
+    "label_fr": "Ancienneté forestière",
+    "label_en": "Forest Age",
+    "aide_fr": "Ancienneté de l'état boisé depuis les cartes de Cassini (XVIIIe siècle). Les forêts anciennes abritent une biodiversité spécifique. Valeur brute en années, ramenée sur 0-100 avec une borne haute de 200 ans : au-dela, l'anciennete est considérée maximale.",
+    "aide_en": "Age of wooded state since Cassini maps (18th century). Ancient forests harbor specific biodiversity. Raw value in years, rescaled to 0-100 against a 200-year upper bound: beyond that, ancientness counts as maximal."
+   },
+   {
+    "code": "T2",
+    "colonne": "indicateur_t2_changement",
+    "colonne_norm": "indicateur_t2_changement_norm",
+    "statut": ".t2_status",
+    "label_fr": "Taux de changement",
+    "label_en": "Change Rate",
+    "aide_fr": "Indicateur de stabilité temporelle dérivé, et non un taux de changement : copie de la continuité forestière N2 quand elle existe, sinon âge T1 plafonné à 100. Aucune série temporelle n'est lue. 100 = forêt ancienne et stable ; vide si N2 et T1 sont inconnus.",
+    "aide_en": "Derived temporal stability proxy, not a change rate: a copy of forest continuity N2 when available, otherwise T1 stand age capped at 100. No time series is read. 100 = ancient, stable forest; empty when both N2 and T1 are unknown."
+   },
+   {
+    "code": "T3",
+    "colonne": "indicateur_t3_coupes_rases",
+    "colonne_norm": "indicateur_t3_coupes_rases_norm",
+    "statut": ".t3_status",
+    "label_fr": "Coupes rases",
+    "label_en": "Clear-cuts",
+    "aide_fr": "Pression de coupe rase (produit SUFOSAT, radar Sentinel-1). Fraction récente coupée à blanc, pondérée par récence. Sens inversé : plus de coupe = indice plus bas.",
+    "aide_en": "Clear-cut pressure (SUFOSAT product, Sentinel-1 radar). Recency-weighted recently clear-cut fraction. Inverted sense: more clear-cutting = lower score."
+   }
+  ]
+ },
+ {
+  "code": "R",
+  "nom_fr": "Risques & Résilience",
+  "nom_en": "Risks & Resilience",
+  "couleur": "#DC143C",
+  "indicateurs": [
+   {
+    "code": "R1",
+    "colonne": "indicateur_r1_feu",
+    "colonne_norm": "indicateur_r1_feu_norm",
+    "statut": ".r1_status",
+    "label_fr": "Risque incendie",
+    "label_en": "Fire Risk",
+    "aide_fr": "Susceptibilité au feu basée sur le climat, la végétation inflammable et l'historique des incendies. Score élevé = faible risque.",
+    "aide_en": "Fire susceptibility based on climate, flammable vegetation and fire history. High score = low risk."
+   },
+   {
+    "code": "R2",
+    "colonne": "indicateur_r2_tempete",
+    "colonne_norm": "indicateur_r2_tempete_norm",
+    "statut": ".r2_status",
+    "label_fr": "Risque tempête",
+    "label_en": "Storm Risk",
+    "aide_fr": "Vulnérabilité aux tempêtes basée sur l'exposition, la hauteur des arbres et les vents dominants. Score élevé = faible risque.",
+    "aide_en": "Storm vulnerability based on exposure, tree height and prevailing winds. High score = low risk."
+   },
+   {
+    "code": "R3",
+    "colonne": "indicateur_r3_secheresse",
+    "colonne_norm": "indicateur_r3_secheresse_norm",
+    "statut": ".r3_status",
+    "label_fr": "Risque sécheresse",
+    "label_en": "Drought Risk",
+    "aide_fr": "Sensibilité à la sécheresse (indice SPEI). Basé sur le bilan hydrique et les projections climatiques. Score élevé = faible risque.",
+    "aide_en": "Drought sensitivity (SPEI index). Based on water balance and climate projections. High score = low risk."
+   },
+   {
+    "code": "R4",
+    "colonne": "indicateur_r4_abroutissement",
+    "colonne_norm": "indicateur_r4_abroutissement_norm",
+    "statut": ".r4_status",
+    "label_fr": "Risque abroutissement",
+    "label_en": "Browsing Risk",
+    "aide_fr": "Pression de la faune sauvage (cervidés) sur la régénération forestière. Basé sur les données cynégétiques. Score élevé = faible pression.",
+    "aide_en": "Wildlife pressure (deer) on forest regeneration. Based on hunting data. High score = low pressure."
+   },
+   {
+    "code": "R5",
+    "colonne": "indicateur_r5_deperissement",
+    "colonne_norm": "indicateur_r5_deperissement_norm",
+    "statut": ".r5_status",
+    "label_fr": "Dépérissement (FORDEAD)",
+    "label_en": "Dieback (FORDEAD)",
+    "aide_fr": "Dépérissement détecté par FORDEAD (résineux) ou RECONFORT (feuillus) sur Sentinel-2 / CRSWIR, pondéré par les taux de bonne détection ONF/DSF 2024. NA hors zone de validité ou hors essence ciblée. Score élevé = faible dépérissement (bon état sanitaire).",
+    "aide_en": "Dieback detected by FORDEAD (conifers) or RECONFORT (broadleaves) on Sentinel-2 / CRSWIR, weighted by ONF/DSF 2024 detection accuracy. NA outside the validity zone or for non-targeted species. High score = low dieback (good forest health)."
+   },
+   {
+    "code": "R6",
+    "colonne": "indicateur_r6_sensibilite",
+    "colonne_norm": "indicateur_r6_sensibilite_norm",
+    "statut": ".r6_status",
+    "label_fr": "Sensibilité microclimatique",
+    "label_en": "Microclimate sensitivity",
+    "aide_fr": "Sensibilité du microsite à une année chaude (Δ stress entre un été canicule et un été moyen, canopée figée). Microclimf, augmenté LiDAR. Score élevé = peu sensible (plus résilient). Fiable en relatif entre parcelles.",
+    "aide_en": "Microsite sensitivity to a hot year (stress change between a heatwave and an average summer, canopy fixed). Microclimf, LiDAR-augmented. High score = low sensitivity (more resilient). Reliable in relative ranking."
+   },
+   {
+    "code": "R7",
+    "colonne": "indicateur_r7_gel",
+    "colonne_norm": "indicateur_r7_gel_norm",
+    "statut": ".r7_status",
+    "label_fr": "Risque de gel tardif",
+    "label_en": "Late-frost Risk",
+    "aide_fr": "Risque de gel tardif : fréquence des gelées printanières après débourrement (Tmin < seuil), déterminant de l'échec de régénération (chêne, hêtre, douglas). Série Tmin downscalée meteoland/SAFRAN. NA sans donnée Tmin. Score élevé = faible risque (peu de gel).",
+    "aide_en": "Late-frost risk: frequency of spring frosts after budburst (Tmin below threshold), a driver of regeneration failure (oak, beech, Douglas fir). meteoland/SAFRAN-downscaled Tmin series. NA without Tmin data. High score = low risk (few frosts)."
+   }
+  ]
+ },
+ {
+  "code": "S",
+  "nom_fr": "Social & Récréatif",
+  "nom_en": "Social & Recreational",
+  "couleur": "#FF69B4",
+  "indicateurs": [
+   {
+    "code": "S1",
+    "colonne": "indicateur_s1_routes",
+    "colonne_norm": "indicateur_s1_routes_norm",
+    "statut": ".s1_status",
+    "label_fr": "Distance aux routes",
+    "label_en": "Road Distance",
+    "aide_fr": "Distance moyenne aux routes (BD TOPO). Une distance faible facilite l'accès mais peut augmenter les perturbations.",
+    "aide_en": "Average distance to roads (BD TOPO). Low distance facilitates access but may increase disturbance."
+   },
+   {
+    "code": "S2",
+    "colonne": "indicateur_s2_bati",
+    "colonne_norm": "indicateur_s2_bati_norm",
+    "statut": ".s2_status",
+    "label_fr": "Distance aux bâtiments",
+    "label_en": "Building Distance",
+    "aide_fr": "Distance moyenne aux bâtiments (BD TOPO). Indicateur de proximité urbaine et de pression anthropique potentielle.",
+    "aide_en": "Average distance to buildings (BD TOPO). Indicator of urban proximity and potential human pressure."
+   },
+   {
+    "code": "S3",
+    "colonne": "indicateur_s3_population",
+    "colonne_norm": "indicateur_s3_population_norm",
+    "statut": ".s3_status",
+    "label_fr": "Proximité population",
+    "label_en": "Population Proximity",
+    "aide_fr": null,
+    "aide_en": null
+   }
+  ]
+ },
+ {
+  "code": "P",
+  "nom_fr": "Production",
+  "nom_en": "Production",
+  "couleur": "#006400",
+  "indicateurs": [
+   {
+    "code": "P1",
+    "colonne": "indicateur_p1_volume",
+    "colonne_norm": "indicateur_p1_volume_norm",
+    "statut": ".p1_status",
+    "label_fr": "Volume de bois (m³/ha)",
+    "label_en": "Timber Volume (m³/ha)",
+    "aide_fr": "Volume de bois sur pied estimé (m³/ha). Calculé à partir de données LiDAR ou de tarifs de cubage. Valeurs typiques : 100-400 m³/ha.",
+    "aide_en": "Estimated standing timber volume (m³/ha). Calculated from LiDAR data or volume tables. Typical values: 100-400 m³/ha."
+   },
+   {
+    "code": "P2",
+    "colonne": "indicateur_p2_station",
+    "colonne_norm": "indicateur_p2_station_norm",
+    "statut": ".p2_status",
+    "label_fr": "Productivité",
+    "label_en": "Productivity",
+    "aide_fr": "Classe de fertilité de la station forestière. Basée sur le sol, le climat et la croissance potentielle des arbres.",
+    "aide_en": "Forest site fertility class. Based on soil, climate and potential tree growth."
+   },
+   {
+    "code": "P3",
+    "colonne": "indicateur_p3_qualite_bois",
+    "colonne_norm": "indicateur_p3_qualite_bois_norm",
+    "statut": ".p3_status",
+    "label_fr": "Qualité du bois",
+    "label_en": "Timber Quality",
+    "aide_fr": "Qualité potentielle du bois basée sur les essences présentes et les conditions de croissance.",
+    "aide_en": "Potential timber quality based on species present and growing conditions."
+   }
+  ]
+ },
+ {
+  "code": "E",
+  "nom_fr": "Énergie & Climat",
+  "nom_en": "Energy & Climate",
+  "couleur": "#FF8C00",
+  "indicateurs": [
+   {
+    "code": "E1",
+    "colonne": "indicateur_e1_bois_energie",
+    "colonne_norm": "indicateur_e1_bois_energie_norm",
+    "statut": ".e1_status",
+    "label_fr": "Bois-énergie",
+    "label_en": "Wood Energy",
+    "aide_fr": "Potentiel de production de bois-énergie : rémanents de récolte (2 %/an du volume, dont 30 % en rémanents) plus un forfait taillis, en tonnes de matière sèche par hectare et par an. Borné à 2,64 t MS/ha/an, soit le gisement d'un peuplement au plafond de P1 : E1, E2 et P1 notent donc le même peuplement pareil.",
+    "aide_en": "Fuelwood potential: harvest residues (2 %/yr of standing volume, 30 % of it as residues) plus a coppice allowance, in tonnes of dry matter per hectare per year. Bounded at 2.64 t DM/ha/yr, the yield of a stand at P1's ceiling, so E1, E2 and P1 score the same stand alike."
+   },
+   {
+    "code": "E2",
+    "colonne": "indicateur_e2_evitement",
+    "colonne_norm": "indicateur_e2_evitement_norm",
+    "statut": ".e2_status",
+    "label_fr": "Évitement CO2",
+    "label_en": "CO2 Avoidance",
+    "aide_fr": "Émissions de CO2 évitées par substitution aux énergies fossiles (tCO2/ha/an), déduites de E1 via les facteurs ADEME. Même borne que E1 (2,64) parce que c'est, à 0,1 % près, la même grandeur : 1 t MS = 4500 kWh = 0,999 tCO2 évitée face au gaz.",
+    "aide_en": "CO2 emissions avoided by substituting fossil fuels (tCO2/ha/year), derived from E1 via ADEME factors. Same bound as E1 (2.64) because it is, to within 0.1 %, the same quantity: 1 t DM = 4500 kWh = 0.999 tCO2 avoided against natural gas."
+   }
+  ]
+ },
+ {
+  "code": "N",
+  "nom_fr": "Naturalité",
+  "nom_en": "Naturalness",
+  "couleur": "#2E8B57",
+  "indicateurs": [
+   {
+    "code": "N1",
+    "colonne": "indicateur_n1_distance",
+    "colonne_norm": "indicateur_n1_distance_norm",
+    "statut": ".n1_status",
+    "label_fr": "Distance infrastructures",
+    "label_en": "Infrastructure Distance",
+    "aide_fr": "Éloignement des infrastructures humaines (routes, bâtiments). Une grande distance indique un environnement plus naturel.",
+    "aide_en": "Distance from human infrastructure (roads, buildings). Greater distance indicates more natural environment."
+   },
+   {
+    "code": "N2",
+    "colonne": "indicateur_n2_continuite",
+    "colonne_norm": "indicateur_n2_continuite_norm",
+    "statut": ".n2_status",
+    "label_fr": "Continuité forestière",
+    "label_en": "Forest Continuity",
+    "aide_fr": "Continuité spatio-temporelle du couvert forestier. Les forêts continues depuis longtemps ont une plus grande naturalité.",
+    "aide_en": "Spatio-temporal continuity of forest cover. Forests continuous for longer have greater naturalness."
+   },
+   {
+    "code": "N3",
+    "colonne": "indicateur_n3_naturalite",
+    "colonne_norm": "indicateur_n3_naturalite_norm",
+    "statut": ".n3_status",
+    "label_fr": "Score de naturalité",
+    "label_en": "Naturalness Score",
+    "aide_fr": "Score composite de naturalité intégrant structure, continuité, éloignement et perturbations anthropiques.",
+    "aide_en": "Composite naturalness score integrating structure, continuity, remoteness and human disturbance."
+   }
+  ]
+ }
+]

@@ -1,0 +1,633 @@
+<title>Atlas du projet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&family=Spectral:wght@500;600&display=swap">
+<link rel="stylesheet" href="nemeton-view.css">
+<style>
+  /* Vue 1 : rail des 12 familles | carte plein écran | tableau et fiche d'UG. */
+  :root { --at-rail: 248px; --at-panneau: 390px; }
+  .at {
+    display: grid; min-height: 0;
+    grid-template-columns: var(--at-rail) minmax(0, 1fr) var(--at-panneau);
+  }
+  .at__rail {
+    min-height: 0; overflow: auto; padding: 12px 10px 16px;
+    background: var(--nv-surface); border-right: 1px solid var(--nv-trait);
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .at__familles { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  .at__famille {
+    width: 100%; display: grid; grid-template-columns: 22px 1fr auto; grid-template-rows: auto auto;
+    column-gap: 8px; row-gap: 4px; align-items: center; text-align: left;
+    padding: 7px 8px; border: 1px solid transparent; border-radius: var(--nv-r);
+    background: transparent; color: var(--nv-encre); cursor: pointer; font: 14px/1.2 var(--nv-police-texte);
+  }
+  .at__famille:hover { background: var(--nv-surface-2); }
+  .at__famille[aria-pressed="true"] { background: var(--nv-action-voile); border-color: var(--nv-action-encre); }
+  .at__code {
+    grid-row: span 2; width: 22px; height: 22px; border-radius: 4px; display: grid; place-items: center;
+    font: 700 11px var(--nv-police-chiffres); background: var(--nv-surface-2); color: var(--nv-encre-2);
+  }
+  .at__famille .nv-barre { grid-column: 2 / 4; }
+  .at__score { font: 600 13px var(--nv-police-chiffres); }
+  .at__mode { display: flex; flex-direction: column; gap: 8px; }
+  .at__mode select { width: 100%; }
+
+  .at__carte { position: relative; min-height: 0; }
+  .at__carte .nv-carte { position: absolute; inset: 0; }
+  .at__titre-carte {
+    position: absolute; z-index: 800; top: 10px; left: 56px; right: 12px; pointer-events: none;
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .at__titre-carte span {
+    background: var(--nv-surface); border: 1px solid var(--nv-trait); border-radius: var(--nv-r);
+    padding: 4px 8px; font-size: 13px; font-weight: 700; box-shadow: var(--nv-ombre);
+  }
+  .at__biv { display: grid; grid-template-columns: repeat(5, 16px); grid-template-rows: repeat(5, 16px); gap: 1px; }
+  .at__biv-cadre { display: grid; grid-template-columns: auto auto; gap: 4px 6px; align-items: end; }
+  .at__biv-y { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 11px; color: var(--nv-encre-2); }
+  .at__biv-x { grid-column: 2; font-size: 11px; color: var(--nv-encre-2); }
+  .at__manquant { display: inline-block; width: 16px; height: 10px; vertical-align: -1px; border-radius: 2px;
+    background: repeating-linear-gradient(45deg, var(--nv-manquant-fond) 0 3px, var(--nv-manquant-trait) 3px 4px); }
+
+  .at__panneau {
+    min-height: 0; overflow: auto; background: var(--nv-surface); border-left: 1px solid var(--nv-trait);
+    display: flex; flex-direction: column;
+  }
+  .at__onglets { display: flex; border-bottom: 1px solid var(--nv-trait); position: sticky; top: 0; background: var(--nv-surface); z-index: 2; }
+  .at__onglets button {
+    flex: 1; padding: 11px 8px; border: 0; border-bottom: 2px solid transparent; background: transparent;
+    font: 700 13px var(--nv-police-texte); color: var(--nv-encre-2); cursor: pointer;
+  }
+  .at__onglets button[aria-selected="true"] { color: var(--nv-encre); border-bottom-color: var(--nv-action-encre); }
+  .at__vue { padding: 12px var(--nv-gouttiere) 18px; display: flex; flex-direction: column; gap: 14px; }
+
+  .at__table-boite { overflow-x: auto; border: 1px solid var(--nv-trait); border-radius: var(--nv-r); }
+  .at__table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .at__table th {
+    position: sticky; top: 0; background: var(--nv-surface-2); text-align: left; font-size: 11px;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--nv-encre-2); padding: 0;
+  }
+  .at__table th button { all: unset; display: block; padding: 7px 8px; cursor: pointer; width: 100%; box-sizing: border-box; }
+  .at__table th button:focus-visible { outline: 2px solid var(--nv-action-encre); }
+  .at__table td { padding: 6px 8px; border-top: 1px solid var(--nv-trait); white-space: nowrap; }
+  .at__table td.n, .at__table th.n { text-align: right; font-family: var(--nv-police-chiffres); font-variant-numeric: tabular-nums; }
+  .at__table tbody tr { cursor: pointer; }
+  .at__table tbody tr:hover, .at__table tbody tr.actif { background: var(--nv-action-voile); }
+  .at__pastille { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
+  .at__fiche-tete { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+  .at__fiche-tete h2 { font-size: 22px; }
+  .at__moyenne { text-align: right; }
+  .at__moyenne .nv-chiffre { font-size: 28px; line-height: 1; display: block; }
+  .at__comparer { display: flex; gap: 8px; align-items: center; }
+  .at__comparer select { flex: 1; min-width: 0; }
+  .at__legende-radar { display: flex; gap: 14px; font-size: 12px; color: var(--nv-encre-2); justify-content: center; }
+  .at__legende-radar i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 5px; background: var(--nv-action-encre); }
+  .at__legende-radar i.b { background: var(--nv-ia); }
+
+  .at__fam { border-top: 1px solid var(--nv-trait); }
+  .at__fam summary {
+    list-style: none; cursor: pointer; display: grid; grid-template-columns: 22px 1fr auto auto; gap: 8px; align-items: center; padding: 8px 0;
+  }
+  .at__fam summary::-webkit-details-marker { display: none; }
+  .at__fam summary::after { content: "▸"; color: var(--nv-encre-3); }
+  .at__fam[open] summary::after { content: "▾"; }
+  .at__ind { display: grid; grid-template-columns: 1fr 64px; gap: 4px 10px; padding: 6px 0 8px 30px; font-size: 13px; }
+  .at__ind + .at__ind { border-top: 1px dashed var(--nv-trait); }
+  .at__ind .nv-barre { grid-column: 1 / 3; }
+  .at__ind-valeur { text-align: right; font-family: var(--nv-police-chiffres); }
+  .at__ind-raison { grid-column: 1 / 3; color: var(--nv-encre-2); font-size: 12px; font-style: italic; }
+  .at__ind-brut { grid-column: 1 / 3; font-size: 12px; color: var(--nv-encre-2); }
+  .at__lien { all: unset; cursor: pointer; color: var(--nv-action-encre); font-size: 12px; text-decoration: underline; }
+  .at__lien:focus-visible { outline: 2px solid var(--nv-action-encre); }
+
+  .at__claude textarea { min-height: 64px; resize: vertical; }
+  .at__claude-ligne { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .at__claude-ligne select { flex: 1; min-width: 140px; }
+  .at__bouton-ia { border-color: var(--nv-ia); color: var(--nv-ia-encre); }
+  .at__bouton-ia:hover { background: var(--nv-ia-voile); }
+  .at__exemple { font-size: 12px; color: var(--nv-encre-2); border: 1px dashed var(--nv-trait); border-radius: var(--nv-r); padding: 4px 8px; }
+  .at__chiffres { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+  .at__chiffres div { display: flex; flex-direction: column; }
+  .at__chiffres .nv-chiffre { font-size: 18px; font-weight: 600; }
+  .at__chiffres .global { font-size: 26px; color: var(--nv-action-encre); }
+
+  @media (max-width: 1100px) { :root { --at-panneau: 340px; --at-rail: 220px; } }
+  @media (max-width: 860px) {
+    .nv-app { height: auto; min-height: 100%; }
+    .at { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(320px, 58vh) auto; }
+    .at__rail { border-right: 0; border-bottom: 1px solid var(--nv-trait); overflow: visible; }
+    .at__familles { flex-direction: row; overflow-x: auto; gap: 6px; padding-bottom: 4px; }
+    .at__famille { min-width: 150px; }
+    .at__panneau { border-left: 0; border-top: 1px solid var(--nv-trait); overflow: visible; }
+  }
+</style>
+
+<div class="nv-app">
+  <header class="nv-entete">
+    <div class="nv-entete__titre">
+      <span class="nv-etiquette" data-t="eyebrow">Atlas du projet</span>
+      <h1 id="titre">Projet</h1>
+    </div>
+    <div class="at__chiffres" id="chiffres"></div>
+    <div class="nv-entete__outils">
+      <span class="at__exemple" id="bandeau-exemple" hidden data-t="exemple">Données fictives</span>
+      <button class="nv-bouton" type="button" id="btn-csv" hidden data-t="export_csv">CSV</button>
+      <button class="nv-bouton" type="button" id="btn-gpkg" hidden data-t="export_gpkg">GeoPackage</button>
+      <div class="nv-bascule" role="group" aria-label="Langue">
+        <button type="button" id="lang-fr" aria-pressed="true">FR</button>
+        <button type="button" id="lang-en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="at">
+    <nav class="at__rail" aria-labelledby="titre-familles">
+      <span class="nv-etiquette" id="titre-familles" data-t="familles">Familles · score du projet</span>
+      <ul class="at__familles" id="familles"></ul>
+      <div class="at__mode">
+        <span class="nv-etiquette" data-t="compromis">Carte de compromis</span>
+        <button class="nv-bouton" type="button" id="btn-bivarie" aria-pressed="false" data-t="croiser">Croiser deux familles</button>
+        <label class="nv-muet" for="biv-a" style="font-size:12px" data-t="axe_a">En abscisse</label>
+        <select class="nv-champ" id="biv-a"></select>
+        <label class="nv-muet" for="biv-b" style="font-size:12px" data-t="axe_b">En ordonnée</label>
+        <select class="nv-champ" id="biv-b"></select>
+      </div>
+      <div class="nv-statut" id="statut-export" role="status" aria-live="polite"></div>
+    </nav>
+
+    <section class="at__carte" aria-label="Carte">
+      <div class="nv-carte" id="carte"></div>
+      <div class="at__titre-carte"><span id="titre-carte"></span></div>
+      <div class="nv-legende" id="legende"></div>
+    </section>
+
+    <aside class="at__panneau">
+      <div class="at__onglets" role="tablist">
+        <button type="button" role="tab" id="onglet-table" aria-selected="true" aria-controls="vue-table" data-t="onglet_table">Unités de gestion</button>
+        <button type="button" role="tab" id="onglet-fiche" aria-selected="false" aria-controls="vue-fiche" data-t="onglet_fiche">Fiche</button>
+      </div>
+
+      <div class="at__vue" id="vue-table" role="tabpanel" aria-labelledby="onglet-table">
+        <input class="nv-champ" id="filtre" type="search" autocomplete="off" data-t-placeholder="filtrer" placeholder="Filtrer">
+        <div class="at__table-boite">
+          <table class="at__table">
+            <thead><tr>
+              <th><button type="button" data-tri="label" data-t="col_ug">UG</button></th>
+              <th><button type="button" data-tri="groupe" data-t="col_groupe">Groupe</button></th>
+              <th class="n"><button type="button" data-tri="surface_ha" data-t="col_surface">ha</button></th>
+              <th class="n"><button type="button" data-tri="score" id="col-score">Score</button></th>
+            </tr></thead>
+            <tbody id="lignes"></tbody>
+          </table>
+        </div>
+        <span class="nv-muet" style="font-size:12px" id="compte"></span>
+      </div>
+
+      <div class="at__vue" id="vue-fiche" role="tabpanel" aria-labelledby="onglet-fiche" hidden>
+        <p class="nv-muet" id="fiche-vide" data-t="fiche_vide">Cliquez sur une unité de gestion, sur la carte ou dans le tableau.</p>
+        <div id="fiche" hidden>
+          <div class="at__fiche-tete">
+            <div>
+              <span class="nv-etiquette" id="fiche-groupe"></span>
+              <h2 id="fiche-titre"></h2>
+              <span class="nv-muet nv-chiffre" id="fiche-surface"></span>
+            </div>
+            <div class="at__moyenne">
+              <span class="nv-etiquette" data-t="moyenne">Moyenne des familles</span>
+              <span class="nv-chiffre" id="fiche-moyenne"></span>
+            </div>
+          </div>
+          <div id="radar"></div>
+          <div class="at__legende-radar" id="legende-radar" hidden>
+            <span><i></i><span id="leg-a"></span></span><span><i class="b"></i><span id="leg-b"></span></span>
+          </div>
+          <div class="at__comparer">
+            <label class="nv-muet" for="comparer" style="font-size:13px" data-t="comparer">Comparer avec</label>
+            <select class="nv-champ" id="comparer"></select>
+          </div>
+          <div id="fiche-familles"></div>
+        </div>
+
+        <section class="at__claude nv-bloc" id="bloc-claude" hidden>
+          <span class="nv-etiquette" data-t="demander">Demander à Claude</span>
+          <div class="at__claude-ligne">
+            <label class="nv-muet" for="profil" style="font-size:12px" data-t="profil">Profil</label>
+            <select class="nv-champ" id="profil"></select>
+          </div>
+          <textarea class="nv-champ" id="question" data-t-placeholder="question_aide"></textarea>
+          <div class="at__claude-ligne">
+            <button class="nv-bouton at__bouton-ia" type="button" id="btn-demander" data-t="envoyer">Demander</button>
+            <span class="nv-muet" style="font-size:12px" id="contexte-question"></span>
+          </div>
+          <div class="nv-ia" id="reponse" hidden>
+            <span class="nv-ia__marque" data-t="genere_ia">Généré par IA · à vérifier</span>
+            <div class="nv-ia__texte" id="reponse-texte"></div>
+          </div>
+        </section>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="nemeton-view.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  NV.textes({
+    fr: {
+      eyebrow: "Atlas du projet", exemple: "Données fictives",
+      familles: "Familles · score du projet", compromis: "Carte de compromis",
+      croiser: "Croiser deux familles", axe_a: "En abscisse", axe_b: "En ordonnée",
+      onglet_table: "Unités de gestion", onglet_fiche: "Fiche",
+      filtrer: "Filtrer par nom ou groupe", col_ug: "UG", col_groupe: "Groupe", col_surface: "ha",
+      compte: "{n} unités sur {total}", fiche_vide: "Cliquez sur une unité de gestion, sur la carte ou dans le tableau.",
+      moyenne: "Moyenne des familles", comparer: "Comparer avec", aucune: "Aucune comparaison",
+      score_global: "Score global", ndp: "NDP", confiance: "Confiance φ", maj: "Mis à jour", ugf: "UG",
+      manquant: "Valeur manquante", manquant_raison: "Manquant : {raison}", manquant_sans: "Manquant, sans cause transmise",
+      opacite: "Opacité : confiance φ = {phi}", detail: "Valeur brute", brut: "Valeur brute {v} · note {n}/100",
+      demander: "Demander à Claude", profil: "Profil", question_aide: "Votre question sur cette unité ou cette famille…",
+      envoyer: "Demander", genere_ia: "Généré par IA · à vérifier", reflexion: "Claude réfléchit…",
+      contexte_ug: "Contexte : {ug} · {famille}", contexte_projet: "Contexte : projet · {famille}",
+      export_csv: "CSV", export_gpkg: "GeoPackage", csv_ok: "Fichier CSV proposé au téléchargement.",
+      csv_refus: "Téléchargement non effectué.", gpkg_ok: "GeoPackage écrit : {f}", gpkg_cours: "Export du GeoPackage…",
+      erreur_donnees: "Les données de l'Atlas n'ont pas pu être chargées : {message}",
+      erreur_ia: "Claude n'a pas pu répondre : {message}",
+      biv_titre: "{a} × {b}", famille_titre: "{f} · score 0–100",
+      p_gestionnaire: "Gestionnaire forestier", p_elu: "Élu local", p_proprietaire: "Propriétaire", p_naturaliste: "Naturaliste"
+    },
+    en: {
+      eyebrow: "Project atlas", exemple: "Fictional data",
+      familles: "Families · project score", compromis: "Trade-off map",
+      croiser: "Cross two families", axe_a: "Horizontal axis", axe_b: "Vertical axis",
+      onglet_table: "Management units", onglet_fiche: "Unit sheet",
+      filtrer: "Filter by name or group", col_ug: "Unit", col_groupe: "Group", col_surface: "ha",
+      compte: "{n} units of {total}", fiche_vide: "Click a management unit, on the map or in the table.",
+      moyenne: "Family average", comparer: "Compare with", aucune: "No comparison",
+      score_global: "Global score", ndp: "NDP", confiance: "Confidence φ", maj: "Updated", ugf: "Units",
+      manquant: "Missing value", manquant_raison: "Missing: {raison}", manquant_sans: "Missing, no cause given",
+      opacite: "Opacity: confidence φ = {phi}", detail: "Raw value", brut: "Raw value {v} · score {n}/100",
+      demander: "Ask Claude", profil: "Profile", question_aide: "Your question about this unit or family…",
+      envoyer: "Ask", genere_ia: "AI generated · to be checked", reflexion: "Claude is thinking…",
+      contexte_ug: "Context: {ug} · {famille}", contexte_projet: "Context: project · {famille}",
+      export_csv: "CSV", export_gpkg: "GeoPackage", csv_ok: "CSV file offered for download.",
+      csv_refus: "Download not done.", gpkg_ok: "GeoPackage written: {f}", gpkg_cours: "Exporting the GeoPackage…",
+      erreur_donnees: "The atlas data could not be loaded: {message}",
+      erreur_ia: "Claude could not answer: {message}",
+      biv_titre: "{a} × {b}", famille_titre: "{f} · score 0–100",
+      p_gestionnaire: "Forest manager", p_elu: "Local elected official", p_proprietaire: "Owner", p_naturaliste: "Naturalist"
+    }
+  });
+
+  var $ = function (id) { return document.getElementById(id); };
+  var E = NV.echapper;
+  var donnees = null, entete = {}, catalogue = [];
+  var couches = new Map();        // ug_id -> couche Leaflet
+  var props = new Map();          // ug_id -> propriétés
+  var etat = NV.stockage.lire("nemeton-atlas-etat", {}) || {};
+  var famille = etat.famille || "C";
+  var bivarie = false, bivA = "P", bivB = "B";
+  var choisie = null, comparee = null, filtre = "", tri = { col: "label", sens: 1 };
+  var mcp = null, sample = null, downloads = null;
+  var carte = NV.carte("carte", { zoomControl: true });
+
+  function nomFamille(f) { return NV.lang === "en" ? f.nom_en : f.nom_fr; }
+  function labelInd(i) { return NV.lang === "en" ? i.label_en : i.label_fr; }
+  function fam(code) { return catalogue.find(function (f) { return f.code === code; }); }
+  function memoriser() { NV.stockage.ecrire("nemeton-atlas-etat", { famille: famille }); }
+  function raison(s) { return s ? String(s).replace(/_/g, " ") : null; }
+
+  /* ---------------------------------------------- couleurs de la carte */
+  var opaciteConfiance = 0.8;
+  function remplissage(p) {
+    if (bivarie) {
+      var c = NV.bivarie.couleur(NV.bivarie.classe(p[fam(bivA).colonne]), NV.bivarie.classe(p[fam(bivB).colonne]));
+      return c || "url(#nv-hachures)";
+    }
+    return NV.couleurScore(p[fam(famille).colonne]) || "url(#nv-hachures)";
+  }
+  function visible(p) {
+    if (!filtre) return true;
+    return (String(p.label) + " " + String(p.groupe || "") + " " + p.ug_id).toLowerCase().indexOf(filtre) >= 0;
+  }
+  function style(p) {
+    var actif = choisie === p.ug_id || comparee === p.ug_id;
+    var v = visible(p);
+    return {
+      fillColor: remplissage(p),
+      fillOpacity: v ? opaciteConfiance : 0.12,
+      color: actif ? NV.css("--nv-encre") : NV.css("--nv-surface"),
+      weight: actif ? 2.6 : 0.8,
+      opacity: v ? 1 : 0.3
+    };
+  }
+  function recolorer() { couches.forEach(function (c, id) { c.setStyle(style(props.get(id))); }); }
+
+  /* ---------------------------------------------- rail des familles */
+  function rendreRail() {
+    $("familles").innerHTML = catalogue.map(function (f) {
+      var s = (entete.familles || []).find(function (x) { return x.code === f.code; });
+      var score = s ? s.score : null;
+      var coul = NV.couleurScore(score);
+      return "<li><button type='button' class='at__famille' data-code='" + f.code + "' aria-pressed='" +
+        (!bivarie && f.code === famille) + "'><span class='at__code'>" + f.code + "</span><span>" + E(nomFamille(f)) +
+        "</span><span class='at__score'>" + NV.nombre(score, 0) + "</span><span class='nv-barre" + (coul ? "" : " nv-barre--manquant") +
+        "'><span style='width:" + (score || 0) + "%;background:" + (coul || "transparent") + "'></span></span></button></li>";
+    }).join("");
+    var opts = catalogue.map(function (f) { return "<option value='" + f.code + "'>" + f.code + " · " + E(nomFamille(f)) + "</option>"; }).join("");
+    $("biv-a").innerHTML = opts; $("biv-b").innerHTML = opts;
+    $("biv-a").value = bivA; $("biv-b").value = bivB;
+    $("btn-bivarie").setAttribute("aria-pressed", String(bivarie));
+  }
+  $("familles").addEventListener("click", function (ev) {
+    var b = ev.target.closest(".at__famille"); if (!b) return;
+    famille = b.getAttribute("data-code"); bivarie = false; memoriser(); tout();
+  });
+  $("btn-bivarie").addEventListener("click", function () { bivarie = !bivarie; tout(); });
+  $("biv-a").addEventListener("change", function () { bivA = this.value; bivarie = true; tout(); });
+  $("biv-b").addEventListener("change", function () { bivB = this.value; bivarie = true; tout(); });
+
+  /* ---------------------------------------------- légende */
+  function rendreLegende() {
+    var phi = entete.confidence;
+    var note = phi != null ? "<div class='nv-muet' style='margin-top:6px'>" + E(NV.t("opacite", { phi: NV.nombre(phi, 2) })) + "</div>" : "";
+    var manque = "<div style='margin-top:6px'><span class='at__manquant'></span> " + E(NV.t("manquant")) + "</div>";
+    if (bivarie) {
+      var cases = [];
+      for (var y = 4; y >= 0; y--) for (var x = 0; x < 5; x++) cases.push("<span style='background:" + NV.bivarie.couleur(x, y) + "'></span>");
+      $("legende").innerHTML = "<div class='at__biv-cadre'><span class='at__biv-y'>" + E(fam(bivB).code) + " →</span><div class='at__biv'>" +
+        cases.join("") + "</div><span class='at__biv-x'>" + E(fam(bivA).code) + " →</span></div>" + manque + note;
+      $("titre-carte").textContent = NV.t("biv_titre", { a: nomFamille(fam(bivA)), b: nomFamille(fam(bivB)) });
+    } else {
+      var stops = NV.palettes.viridis.map(function (c, i, a) { return c + " " + Math.round(i / (a.length - 1) * 100) + "%"; }).join(",");
+      $("legende").innerHTML = "<div class='nv-degrade' style='background:linear-gradient(90deg," + stops + ")'></div>" +
+        "<div class='nv-legende__echelle nv-num'><span>0</span><span>50</span><span>100</span></div>" + manque + note;
+      $("titre-carte").textContent = NV.t("famille_titre", { f: nomFamille(fam(famille)) });
+    }
+  }
+
+  /* ---------------------------------------------- tableau lié à la carte */
+  function valeurTri(p, col) {
+    if (col === "score") return bivarie ? p[fam(bivA).colonne] : p[fam(famille).colonne];
+    return p[col];
+  }
+  function rendreTable() {
+    var liste = Array.from(props.values()).filter(visible);
+    liste.sort(function (a, b) {
+      var x = valeurTri(a, tri.col), y = valeurTri(b, tri.col);
+      if (x == null) return 1; if (y == null) return -1;
+      if (typeof x === "number" && typeof y === "number") return (x - y) * tri.sens;
+      return String(x).localeCompare(String(y), NV.lang, { numeric: true }) * tri.sens;
+    });
+    $("col-score").textContent = bivarie ? fam(bivA).code : fam(famille).code;
+    $("lignes").innerHTML = liste.map(function (p) {
+      var v = valeurTri(p, "score"), c = NV.couleurScore(v);
+      return "<tr data-ug='" + E(p.ug_id) + "'" + (p.ug_id === choisie ? " class='actif'" : "") + "><td>" + E(p.label) + "</td><td>" +
+        E(p.groupe || "—") + "</td><td class='n'>" + NV.nombre(p.surface_ha, 2) + "</td><td class='n'>" +
+        (c ? "<span class='at__pastille' style='background:" + c + "'></span>" + NV.nombre(v, 0) : "<span class='at__manquant'></span>") + "</td></tr>";
+    }).join("");
+    $("compte").textContent = NV.t("compte", { n: NV.nombre(liste.length), total: NV.nombre(props.size) });
+  }
+  document.querySelector(".at__table thead").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button[data-tri]"); if (!b) return;
+    var col = b.getAttribute("data-tri");
+    tri = { col: col, sens: tri.col === col ? -tri.sens : (col === "score" ? -1 : 1) };
+    rendreTable();
+  });
+  $("lignes").addEventListener("click", function (ev) {
+    var tr = ev.target.closest("tr[data-ug]"); if (tr) choisir(tr.getAttribute("data-ug"), true);
+  });
+  $("lignes").addEventListener("mouseover", function (ev) {
+    var tr = ev.target.closest("tr[data-ug]"); if (!tr) return;
+    var c = couches.get(tr.getAttribute("data-ug")); if (c) { c.setStyle({ weight: 3, color: NV.css("--nv-encre") }); c.bringToFront(); }
+  });
+  $("lignes").addEventListener("mouseout", function (ev) {
+    var tr = ev.target.closest("tr[data-ug]"); if (!tr) return;
+    var id = tr.getAttribute("data-ug"), c = couches.get(id); if (c) c.setStyle(style(props.get(id)));
+  });
+  $("filtre").addEventListener("input", function () { filtre = this.value.trim().toLowerCase(); recolorer(); rendreTable(); });
+
+  /* ---------------------------------------------- onglets */
+  function onglet(nom) {
+    var fiche = nom === "fiche";
+    $("onglet-table").setAttribute("aria-selected", String(!fiche));
+    $("onglet-fiche").setAttribute("aria-selected", String(fiche));
+    $("vue-table").hidden = fiche; $("vue-fiche").hidden = !fiche;
+  }
+  $("onglet-table").addEventListener("click", function () { onglet("table"); });
+  $("onglet-fiche").addEventListener("click", function () { onglet("fiche"); });
+
+  /* ---------------------------------------------- fiche d'UG */
+  function choisir(id, centrer) {
+    choisie = id; if (comparee === id) comparee = null;
+    recolorer(); rendreTable(); rendreFiche(); onglet("fiche");
+    var c = couches.get(id);
+    if (c && centrer) carte.flyToBounds(c.getBounds(), { maxZoom: 16, padding: [40, 40], duration: NV.mouvementReduit() ? 0 : 0.5 });
+  }
+
+  function rendreFiche() {
+    var p = props.get(choisie);
+    $("fiche-vide").hidden = !!p; $("fiche").hidden = !p;
+    majContexteQuestion();
+    if (!p) return;
+    var q = comparee ? props.get(comparee) : null;
+    $("fiche-titre").textContent = p.label;
+    $("fiche-groupe").textContent = p.groupe || "";
+    $("fiche-surface").textContent = NV.nombre(p.surface_ha, 2) + " ha · " + p.ug_id;
+    var vals = catalogue.map(function (f) { var v = p[f.colonne]; return v == null ? null : Number(v); });
+    var dispo = vals.filter(function (v) { return v != null; });
+    $("fiche-moyenne").textContent = dispo.length ? NV.nombre(dispo.reduce(function (a, b) { return a + b; }, 0) / dispo.length, 1) : "—";
+    var series = [{ valeurs: vals }];
+    if (q) series.push({ valeurs: catalogue.map(function (f) { var v = q[f.colonne]; return v == null ? null : Number(v); }), classe: "nv-b" });
+    NV.radar($("radar"), catalogue.map(function (f) { return { label: nomFamille(f), court: f.code }; }), series,
+      { titre: p.label + (q ? " / " + q.label : "") });
+    $("legende-radar").hidden = !q;
+    $("leg-a").textContent = p.label; $("leg-b").textContent = q ? q.label : "";
+
+    var opts = ["<option value=''>" + E(NV.t("aucune")) + "</option>"];
+    Array.from(props.values()).sort(function (a, b) { return String(a.label).localeCompare(String(b.label), NV.lang, { numeric: true }); })
+      .forEach(function (x) { if (x.ug_id !== p.ug_id) opts.push("<option value='" + E(x.ug_id) + "'" + (x.ug_id === comparee ? " selected" : "") + ">" + E(x.label) + "</option>"); });
+    $("comparer").innerHTML = opts.join("");
+
+    $("fiche-familles").innerHTML = catalogue.map(function (f) {
+      var v = p[f.colonne], c = NV.couleurScore(v);
+      var vq = q ? q[f.colonne] : null;
+      var inds = f.indicateurs.map(function (i) {
+        var n = p[i.colonne_norm], ci = NV.couleurScore(n), st = p[i.statut];
+        var aide = NV.lang === "en" ? i.aide_en : i.aide_fr;
+        var ligne = "<div class='at__ind'><span title='" + E(aide || "") + "'><span class='nv-num'>" + E(i.code) + "</span> · " + E(labelInd(i)) + "</span>" +
+          "<span class='at__ind-valeur'>" + (n == null ? "—" : NV.nombre(n, 0)) + (q ? " <span class='nv-muet'>/ " + NV.nombre(q[i.colonne_norm], 0) + "</span>" : "") + "</span>" +
+          "<span class='nv-barre" + (ci ? "" : " nv-barre--manquant") + "'><span style='width:" + (n || 0) + "%;background:" + (ci || "transparent") + "'></span></span>";
+        if (n == null) ligne += "<span class='at__ind-raison' title='" + E(st || "") + "'>" + E(st ? NV.t("manquant_raison", { raison: raison(st) }) : NV.t("manquant_sans")) + "</span>";
+        if (mcp) ligne += "<span class='at__ind-brut' data-brut='" + E(i.code) + "'><button type='button' class='at__lien' data-detail='" + E(i.code) + "'>" + E(NV.t("detail")) + "</button></span>";
+        return ligne + "</div>";
+      }).join("");
+      return "<details class='at__fam'" + (f.code === famille ? " open" : "") + "><summary><span class='at__code'>" + f.code + "</span><span>" +
+        E(nomFamille(f)) + "</span><span class='at__score'>" + (c ? NV.nombre(v, 0) : "<span class='at__manquant'></span>") +
+        (q ? " <span class='nv-muet'>/ " + NV.nombre(vq, 0) + "</span>" : "") + "</span></summary>" + inds + "</details>";
+    }).join("");
+  }
+  $("comparer").addEventListener("change", function () { comparee = this.value || null; recolorer(); rendreFiche(); });
+
+  // Valeur brute d'un sous-indicateur, lue en direct par le connecteur.
+  $("fiche-familles").addEventListener("click", function (ev) {
+    var b = ev.target.closest("[data-detail]"); if (!b || !mcp) return;
+    var code = b.getAttribute("data-detail"), zone = b.parentNode;
+    b.disabled = true;
+    NV.appeler(mcp, "detail_indicateur", { projet: entete.project_id, ug: choisie, code: code, langue: NV.lang }, { cache: { staleTime: 300000 } })
+      .then(function (r) {
+        zone.textContent = r.manquant ? NV.t("manquant_raison", { raison: raison(r.statut) || "—" })
+          : NV.t("brut", { v: NV.nombre(r.valeur_brute, 2), n: NV.nombre(r.note, 0) });
+      })
+      .catch(function (e) { zone.textContent = NV.messageMcp(e); });
+  });
+
+  /* ---------------------------------------------- Demander à Claude */
+  var PROFILS = ["gestionnaire", "elu", "proprietaire", "naturaliste"];
+  function rendreProfils() {
+    var cle = "nemeton-profil:" + (entete.project_id || "");
+    var courant = NV.stockage.lire(cle, "gestionnaire");
+    $("profil").innerHTML = PROFILS.map(function (p) {
+      return "<option value='" + p + "'" + (p === courant ? " selected" : "") + ">" + E(NV.t("p_" + p)) + "</option>";
+    }).join("");
+  }
+  $("profil").addEventListener("change", function () { NV.stockage.ecrire("nemeton-profil:" + (entete.project_id || ""), this.value); });
+  function majContexteQuestion() {
+    var p = props.get(choisie), f = nomFamille(fam(famille));
+    $("contexte-question").textContent = p ? NV.t("contexte_ug", { ug: p.label, famille: f }) : NV.t("contexte_projet", { famille: f });
+  }
+  var demande = null;
+  $("btn-demander").addEventListener("click", function () {
+    var question = $("question").value.trim();
+    if (!question || !sample) return;
+    if (demande) demande.abort();
+    demande = new AbortController();
+    var p = props.get(choisie), f = fam(famille);
+    var contexte = {
+      projet: { nom: entete.name, score_global: entete.global_score, ndp: entete.ndp_level, confiance: entete.confidence, familles: entete.familles },
+      famille_affichee: { code: f.code, nom: nomFamille(f) },
+      unite: p ? { label: p.label, groupe: p.groupe, surface_ha: p.surface_ha,
+        familles: catalogue.map(function (x) { return { code: x.code, score: p[x.colonne] }; }),
+        indicateurs: f.indicateurs.map(function (i) { return { code: i.code, libelle: labelInd(i), note: p[i.colonne_norm], statut: p[i.statut] || null }; }) } : null
+    };
+    var consigne = (NV.lang === "en" ? "Answer in English" : "Réponds en français, en vouvoyant le lecteur") +
+      ". You assist a forest diagnosis made with nemeton (12 families, sub-indicators scored 0-100, NDP precision level, confidence φ). " +
+      "Reader profile: " + NV.t("p_" + $("profil").value) + ". Use only the data below; say when a value is missing and why (status), never treat it as zero. " +
+      "Be concise (under 180 words), cite the indicator codes you rely on.\n\nDATA:\n" + JSON.stringify(contexte) + "\n\nQUESTION:\n" + question;
+    var bloc = $("reponse"), texte = $("reponse-texte");
+    bloc.hidden = false; texte.textContent = NV.t("reflexion");
+    $("btn-demander").disabled = true;
+    sample(consigne, { signal: demande.signal, onText: function (o) { texte.textContent = o.text; } })
+      .then(function (r) { texte.textContent = r.text; })
+      .catch(function (e) {
+        if (e && e.code === "cancelled") return;
+        if (e && e.code === "not_granted") { $("bloc-claude").hidden = true; return; }
+        texte.textContent = (e && e.text) ? e.text : NV.t("erreur_ia", { message: (e && e.message) || "" });
+      })
+      .then(function () { $("btn-demander").disabled = false; });
+  });
+
+  /* ---------------------------------------------- exports */
+  function csv() {
+    var cols = ["ug_id", "label", "groupe", "surface_ha"].concat(catalogue.map(function (f) { return f.colonne; }));
+    catalogue.forEach(function (f) { f.indicateurs.forEach(function (i) { cols.push(i.colonne_norm); }); });
+    var sep = NV.lang === "fr" ? ";" : ",";
+    var cel = function (v) {
+      if (v == null) return "";
+      if (typeof v === "number") return NV.lang === "fr" ? String(v).replace(".", ",") : String(v);
+      return /[";,\n]/.test(v) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v);
+    };
+    return "﻿" + [cols.join(sep)].concat(Array.from(props.values()).map(function (p) {
+      return cols.map(function (c) { return cel(p[c]); }).join(sep);
+    })).join("\r\n");
+  }
+  $("btn-csv").addEventListener("click", function () {
+    if (!downloads) return;
+    downloads.save({ filename: "atlas_" + (entete.project_id || "projet") + ".csv", data: new Blob([csv()], { type: "text/csv" }) })
+      .then(function () { NV.annoncer($("statut-export"), NV.t("csv_ok")); },
+            function () { NV.annoncer($("statut-export"), NV.t("csv_refus")); });
+  });
+  $("btn-gpkg").addEventListener("click", function () {
+    if (!mcp) return;
+    var b = this; b.disabled = true;
+    NV.annoncer($("statut-export"), NV.t("gpkg_cours"), 0);
+    NV.appeler(mcp, "exporter_gpkg", { projet: entete.project_id })
+      .then(function (r) { NV.annoncer($("statut-export"), NV.t("gpkg_ok", { f: r.fichier }), 0); })
+      .catch(function (e) { NV.annoncer($("statut-export"), NV.messageMcp(e), 0); })
+      .then(function () { b.disabled = false; });
+  });
+
+  /* ---------------------------------------------- en-tête et langue */
+  function rendreEntete() {
+    $("titre").textContent = entete.name || entete.project_id || "Projet";
+    $("bandeau-exemple").hidden = !entete.exemple;
+    var bloc = function (cle, val, cls) { return "<div><span class='nv-etiquette'>" + E(NV.t(cle)) + "</span><span class='nv-chiffre " + (cls || "") + "'>" + val + "</span></div>"; };
+    $("chiffres").innerHTML =
+      bloc("score_global", NV.nombre(entete.global_score, 1), "global") +
+      bloc("ndp", E(entete.ndp_level != null ? entete.ndp_level : "—") + (entete.ndp_name ? " <span class='nv-muet' style='font-size:12px;font-family:var(--nv-police-texte);font-weight:400'>" + E(entete.ndp_name) + "</span>" : "")) +
+      bloc("confiance", NV.nombre(entete.confidence, 2)) +
+      bloc("ugf", NV.nombre(entete.n_ugf != null ? entete.n_ugf : props.size)) +
+      bloc("maj", E(NV.date(entete.updated_at)));
+  }
+  function tout() {
+    rendreRail(); rendreLegende(); recolorer(); rendreTable(); rendreFiche();
+  }
+  function majLangue() {
+    NV.traduire();
+    $("lang-fr").setAttribute("aria-pressed", String(NV.lang === "fr"));
+    $("lang-en").setAttribute("aria-pressed", String(NV.lang === "en"));
+    if (donnees) { rendreEntete(); rendreProfils(); tout(); }
+  }
+  $("lang-fr").addEventListener("click", function () { NV.changerLangue("fr"); majLangue(); });
+  $("lang-en").addEventListener("click", function () { NV.changerLangue("en"); majLangue(); });
+
+  /* ---------------------------------------------- chargement */
+  Promise.all([NV.charger("atlas.geojson"), NV.charger("contexte.geojson").catch(function () { return null; })])
+    .then(function (r) {
+      donnees = r[0];
+      if (!donnees || !donnees.features) throw new Error("atlas.geojson");
+      entete = donnees.nemeton || {};
+      catalogue = entete.catalogue || [];
+      if (!fam(famille)) famille = catalogue.length ? catalogue[0].code : "C";
+      if (!fam(bivA)) bivA = catalogue[0].code;
+      if (!fam(bivB)) bivB = catalogue[1 % catalogue.length].code;
+      opaciteConfiance = entete.confidence != null ? 0.35 + 0.55 * Math.max(0, Math.min(1, entete.confidence)) : 0.8;
+
+      if (r[1]) NV.repere(carte, r[1], NV.styleContexte, "contexte");
+      var gj = L.geoJSON(donnees, {
+        style: function (f) { return style(f.properties); },
+        onEachFeature: function (f, c) {
+          var p = f.properties;
+          couches.set(p.ug_id, c); props.set(p.ug_id, p);
+          c.bindTooltip(function () {
+            var v = bivarie ? null : p[fam(famille).colonne];
+            return "<strong>" + E(p.label) + "</strong>" + (p.groupe ? "<br>" + E(p.groupe) : "") + "<br>" +
+              (bivarie ? E(fam(bivA).code) + " <span class='nv-num'>" + NV.nombre(p[fam(bivA).colonne], 0) + "</span> · " +
+                E(fam(bivB).code) + " <span class='nv-num'>" + NV.nombre(p[fam(bivB).colonne], 0) + "</span>"
+                : E(fam(famille).code) + " <span class='nv-num'>" + (v == null ? E(NV.t("manquant")) : NV.nombre(v, 0)) + "</span>");
+          }, { className: "nv-infobulle", sticky: true, direction: "top", offset: [0, -6] });
+          c.on("click", function () { choisir(p.ug_id, false); });
+        }
+      }).addTo(carte);
+      carte.fitBounds(gj.getBounds(), { padding: [24, 24] });
+      NV.motifHachures(carte);
+      recolorer();
+      majLangue();
+    })
+    .catch(function (e) {
+      var a = document.createElement("p");
+      a.className = "nv-alerte";
+      a.textContent = NV.t("erreur_donnees", { message: e.message });
+      $("legende").replaceWith(a);
+      a.style.cssText = "position:absolute;z-index:900;left:12px;right:12px;bottom:22px;background:var(--nv-surface)";
+    });
+
+  NV.capacite("mcp").then(function (m) { mcp = m; $("btn-gpkg").hidden = !m; if (donnees) rendreFiche(); });
+  NV.capacite("sample").then(function (s) { sample = s; $("bloc-claude").hidden = !s; });
+  NV.capacite("downloads").then(function (d) { downloads = d; $("btn-csv").hidden = !d; });
+  majLangue();
+})();
+</script>

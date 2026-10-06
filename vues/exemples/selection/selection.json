@@ -1,0 +1,34 @@
+{
+ "exemple": true,
+ "insee": "99999",
+ "commune": "Commune fictive",
+ "departement": "99",
+ "n": 384,
+ "surface_ha": 1239.2,
+ "mode": "complet",
+ "bd_foret": true,
+ "sections": [
+  {
+   "section": "A",
+   "n": 96,
+   "surface_ha": 314.13
+  },
+  {
+   "section": "B",
+   "n": 96,
+   "surface_ha": 309.1
+  },
+  {
+   "section": "C",
+   "n": 96,
+   "surface_ha": 306.8
+  },
+  {
+   "section": "D",
+   "n": 96,
+   "surface_ha": 309.16
+  }
+ ],
+ "nom_projet": "Forêt exemple",
+ "source": "Données fictives générées par outils/generer-exemples.mjs"
+}
