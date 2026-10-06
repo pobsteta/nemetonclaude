@@ -1,0 +1,535 @@
+{
+ "exemple": true,
+ "ok": true,
+ "projet": "20261006_120000_demo",
+ "nom": "Forêt exemple (données fictives)",
+ "horizon_annees": 20,
+ "annee_base": 2026,
+ "actions": [
+  {
+   "id": "act_20261006100000_demo0",
+   "ug_id": "UG004",
+   "type": "eclaircie",
+   "type_libre": null,
+   "intensite": "moderee",
+   "annee_cible": 2,
+   "annee": 2028,
+   "duree": 1,
+   "priorite": "haute",
+   "statut": "planifiee",
+   "objectifs_lies": [
+    "P",
+    "C"
+   ],
+   "quantite": {
+    "volume_m3": 85,
+    "surface_ha": 3.1,
+    "cout_eur": 900,
+    "revenu_eur": 4200
+   },
+   "source": {
+    "origine": "vue",
+    "extrait_texte": null
+   },
+   "commentaire": null,
+   "cree_par": "gestionnaire",
+   "cree_le": "2026-09-10T09:00:00+0200",
+   "ug_label": "UG 4",
+   "propose_par_claude": false,
+   "version": "v0"
+  },
+  {
+   "id": "act_20261006100001_demo1",
+   "ug_id": "UG011",
+   "type": "depressage",
+   "type_libre": null,
+   "intensite": null,
+   "annee_cible": 1,
+   "annee": 2027,
+   "duree": 1,
+   "priorite": "moyenne",
+   "statut": "validee",
+   "objectifs_lies": [
+    "P"
+   ],
+   "quantite": {
+    "surface_ha": 2.4,
+    "cout_eur": 1800
+   },
+   "source": {
+    "origine": "vue",
+    "extrait_texte": null
+   },
+   "commentaire": null,
+   "cree_par": "gestionnaire",
+   "cree_le": "2026-09-11T09:00:00+0200",
+   "ug_label": "UG 11",
+   "propose_par_claude": false,
+   "version": "v1"
+  },
+  {
+   "id": "act_20261006100002_demo2",
+   "ug_id": "UG018",
+   "type": "cloisonnement",
+   "type_libre": null,
+   "intensite": null,
+   "annee_cible": 1,
+   "annee": 2027,
+   "duree": 1,
+   "priorite": "moyenne",
+   "statut": "realisee",
+   "objectifs_lies": [
+    "P",
+    "F"
+   ],
+   "quantite": {
+    "surface_ha": 4,
+    "cout_eur": 1200
+   },
+   "source": {
+    "origine": "vue",
+    "extrait_texte": null
+   },
+   "commentaire": null,
+   "cree_par": "gestionnaire",
+   "cree_le": "2026-09-12T09:00:00+0200",
+   "ug_label": "UG 18",
+   "propose_par_claude": false,
+   "version": "v2"
+  },
+  {
+   "id": "act_20261006100003_demo3",
+   "ug_id": "UG025",
+   "type": "regeneration",
+   "type_libre": null,
+   "intensite": null,
+   "annee_cible": 6,
+   "annee": 2032,
+   "duree": 1,
+   "priorite": "moyenne",
+   "statut": "proposee",
+   "objectifs_lies": [
+    "B",
+    "T"
+   ],
+   "quantite": {
+    "surface_ha": 2
+   },
+   "source": {
+    "origine": "vue",
+    "extrait_texte": null
+   },
+   "commentaire": null,
+   "cree_par": "gestionnaire",
+   "cree_le": "2026-09-13T09:00:00+0200",
+   "ug_label": "UG 25",
+   "propose_par_claude": false,
+   "version": "v3"
+  },
+  {
+   "id": "act_20261006100004_demo4",
+   "ug_id": "UG032",
+   "type": "observation",
+   "type_libre": null,
+   "intensite": null,
+   "annee_cible": 3,
+   "annee": 2029,
+   "duree": 1,
+   "priorite": "basse",
+   "statut": "planifiee",
+   "objectifs_lies": [
+    "B"
+   ],
+   "quantite": {},
+   "source": {
+    "origine": "vue",
+    "extrait_texte": null
+   },
+   "commentaire": null,
+   "cree_par": "gestionnaire",
+   "cree_le": "2026-09-14T09:00:00+0200",
+   "ug_label": "UG 32",
+   "propose_par_claude": false,
+   "version": "v4"
+  },
+  {
+   "id": "act_20261006100005_demo5",
+   "ug_id": "UG039",
+   "type": "coupe_rase",
+   "type_libre": null,
+   "intensite": "forte",
+   "annee_cible": 14,
+   "annee": 2040,
+   "duree": 1,
+   "priorite": "basse",
+   "statut": "abandonnee",
+   "objectifs_lies": [
+    "P"
+   ],
+   "quantite": {
+    "volume_m3": 320,
+    "revenu_eur": 19000
+   },
+   "source": {
+    "origine": "vue",
+    "extrait_texte": null
+   },
+   "commentaire": null,
+   "cree_par": "gestionnaire",
+   "cree_le": "2026-09-15T09:00:00+0200",
+   "ug_label": "UG 39",
+   "propose_par_claude": false,
+   "version": "v5"
+  },
+  {
+   "id": "act_20261006100006_demo6",
+   "ug_id": "UG046",
+   "type": "plantation",
+   "type_libre": null,
+   "intensite": null,
+   "annee_cible": 15,
+   "annee": 2041,
+   "duree": 1,
+   "priorite": "moyenne",
+   "statut": "proposee",
+   "objectifs_lies": [
+    "C",
+    "P"
+   ],
+   "quantite": {
+    "surface_ha": 2.8,
+    "nb_tiges": 4500,
+    "cout_eur": 9800
+   },
+   "source": {
+    "origine": "claude",
+    "extrait_texte": "Biodiversité (B) faible et régénération lente : favoriser le mélange."
+   },
+   "commentaire": null,
+   "cree_par": "gestionnaire",
+   "cree_le": "2026-09-16T09:00:00+0200",
+   "ug_label": "UG 46",
+   "propose_par_claude": true,
+   "version": "v6"
+  },
+  {
+   "id": "act_20261006100007_demo7",
+   "ug_id": "UG053",
+   "type": "protection",
+   "type_libre": null,
+   "intensite": null,
+   "annee_cible": 2,
+   "annee": 2028,
+   "duree": 1,
+   "priorite": "haute",
+   "statut": "validee",
+   "objectifs_lies": [
+    "B",
+    "N"
+   ],
+   "quantite": {
+    "cout_eur": 650
+   },
+   "source": {
+    "origine": "vue",
+    "extrait_texte": null
+   },
+   "commentaire": null,
+   "cree_par": "gestionnaire",
+   "cree_le": "2026-09-17T09:00:00+0200",
+   "ug_label": "UG 53",
+   "propose_par_claude": false,
+   "version": "v7"
+  },
+  {
+   "id": "act_20261006100008_demo8",
+   "ug_id": "UG060",
+   "type": "eclaircie",
+   "type_libre": null,
+   "intensite": "faible",
+   "annee_cible": 9,
+   "annee": 2035,
+   "duree": 1,
+   "priorite": "moyenne",
+   "statut": "proposee",
+   "objectifs_lies": [
+    "P",
+    "R"
+   ],
+   "quantite": {
+    "volume_m3": 60,
+    "revenu_eur": 2600
+   },
+   "source": {
+    "origine": "claude",
+    "extrait_texte": "Biodiversité (B) faible et régénération lente : favoriser le mélange."
+   },
+   "commentaire": null,
+   "cree_par": "gestionnaire",
+   "cree_le": "2026-09-18T09:00:00+0200",
+   "ug_label": "UG 60",
+   "propose_par_claude": true,
+   "version": "v8"
+  },
+  {
+   "id": "act_20261006100009_demo9",
+   "ug_id": "UG007",
+   "type": "entretien",
+   "type_libre": null,
+   "intensite": null,
+   "annee_cible": 4,
+   "annee": 2030,
+   "duree": 1,
+   "priorite": "basse",
+   "statut": "planifiee",
+   "objectifs_lies": [
+    "S",
+    "L"
+   ],
+   "quantite": {
+    "cout_eur": 400
+   },
+   "source": {
+    "origine": "vue",
+    "extrait_texte": null
+   },
+   "commentaire": null,
+   "cree_par": "gestionnaire",
+   "cree_le": "2026-09-10T09:00:00+0200",
+   "ug_label": "UG 7",
+   "propose_par_claude": false,
+   "version": "v9"
+  },
+  {
+   "id": "act_20261006100010_demo10",
+   "ug_id": "UG014",
+   "type": "autre",
+   "type_libre": "Création d'une mare forestière",
+   "intensite": null,
+   "annee_cible": 5,
+   "annee": 2031,
+   "duree": 1,
+   "priorite": "moyenne",
+   "statut": "proposee",
+   "objectifs_lies": [
+    "W",
+    "B"
+   ],
+   "quantite": {
+    "cout_eur": 2500
+   },
+   "source": {
+    "origine": "vue",
+    "extrait_texte": null
+   },
+   "commentaire": null,
+   "cree_par": "gestionnaire",
+   "cree_le": "2026-09-11T09:00:00+0200",
+   "ug_label": "UG 14",
+   "propose_par_claude": false,
+   "version": "v10"
+  }
+ ],
+ "historique": [
+  {
+   "ts": "2026-09-11T09:00:00+0200",
+   "user": "gestionnaire",
+   "action_id": "act_20261006100010_demo10",
+   "op": "create"
+  },
+  {
+   "ts": "2026-10-01T14:39:00+0200",
+   "user": "gestionnaire",
+   "action_id": "act_20261006100009_demo9",
+   "op": "update",
+   "champ": "statut",
+   "ancien": "proposee",
+   "nouveau": "planifiee"
+  },
+  {
+   "ts": "2026-09-10T09:00:00+0200",
+   "user": "gestionnaire",
+   "action_id": "act_20261006100009_demo9",
+   "op": "create"
+  },
+  {
+   "ts": "2026-09-18T09:00:00+0200",
+   "user": "gestionnaire",
+   "action_id": "act_20261006100008_demo8",
+   "op": "create"
+  },
+  {
+   "ts": "2026-10-01T14:37:00+0200",
+   "user": "gestionnaire",
+   "action_id": "act_20261006100007_demo7",
+   "op": "update",
+   "champ": "statut",
+   "ancien": "proposee",
+   "nouveau": "validee"
+  },
+  {
+   "ts": "2026-09-17T09:00:00+0200",
+   "user": "gestionnaire",
+   "action_id": "act_20261006100007_demo7",
+   "op": "create"
+  },
+  {
+   "ts": "2026-09-16T09:00:00+0200",
+   "user": "gestionnaire",
+   "action_id": "act_20261006100006_demo6",
+   "op": "create"
+  },
+  {
+   "ts": "2026-10-01T14:35:00+0200",
+   "user": "gestionnaire",
+   "action_id": "act_20261006100005_demo5",
+   "op": "update",
+   "champ": "statut",
+   "ancien": "proposee",
+   "nouveau": "abandonnee"
+  },
+  {
+   "ts": "2026-09-15T09:00:00+0200",
+   "user": "gestionnaire",
+   "action_id": "act_20261006100005_demo5",
+   "op": "create"
+  },
+  {
+   "ts": "2026-10-01T14:34:00+0200",
+   "user": "gestionnaire",
+   "action_id": "act_20261006100004_demo4",
+   "op": "update",
+   "champ": "statut",
+   "ancien": "proposee",
+   "nouveau": "planifiee"
+  },
+  {
+   "ts": "2026-09-14T09:00:00+0200",
+   "user": "gestionnaire",
+   "action_id": "act_20261006100004_demo4",
+   "op": "create"
+  },
+  {
+   "ts": "2026-09-13T09:00:00+0200",
+   "user": "gestionnaire",
+   "action_id": "act_20261006100003_demo3",
+   "op": "create"
+  },
+  {
+   "ts": "2026-10-01T14:32:00+0200",
+   "user": "gestionnaire",
+   "action_id": "act_20261006100002_demo2",
+   "op": "update",
+   "champ": "statut",
+   "ancien": "proposee",
+   "nouveau": "planifiee"
+  },
+  {
+   "ts": "2026-09-12T09:00:00+0200",
+   "user": "gestionnaire",
+   "action_id": "act_20261006100002_demo2",
+   "op": "create"
+  },
+  {
+   "ts": "2026-10-01T14:31:00+0200",
+   "user": "gestionnaire",
+   "action_id": "act_20261006100001_demo1",
+   "op": "update",
+   "champ": "statut",
+   "ancien": "proposee",
+   "nouveau": "validee"
+  },
+  {
+   "ts": "2026-09-11T09:00:00+0200",
+   "user": "gestionnaire",
+   "action_id": "act_20261006100001_demo1",
+   "op": "create"
+  },
+  {
+   "ts": "2026-10-01T14:30:00+0200",
+   "user": "gestionnaire",
+   "action_id": "act_20261006100000_demo0",
+   "op": "update",
+   "champ": "statut",
+   "ancien": "proposee",
+   "nouveau": "planifiee"
+  },
+  {
+   "ts": "2026-09-10T09:00:00+0200",
+   "user": "gestionnaire",
+   "action_id": "act_20261006100000_demo0",
+   "op": "create"
+  }
+ ],
+ "commentaires_ug": {
+  "UG004": "Peuplement fragilisé par les sécheresses de 2022."
+ },
+ "catalogue": {
+  "types": [
+   "coupe_rase",
+   "eclaircie",
+   "depressage",
+   "plantation",
+   "regeneration",
+   "cloisonnement",
+   "desserte",
+   "observation",
+   "protection",
+   "entretien",
+   "autre"
+  ],
+  "statuts": [
+   "proposee",
+   "validee",
+   "planifiee",
+   "realisee",
+   "abandonnee"
+  ],
+  "priorites": [
+   "haute",
+   "moyenne",
+   "basse"
+  ],
+  "familles": [
+   "C",
+   "B",
+   "W",
+   "A",
+   "F",
+   "L",
+   "T",
+   "R",
+   "S",
+   "P",
+   "E",
+   "N"
+  ],
+  "transitions": {
+   "proposee": [
+    "validee",
+    "abandonnee"
+   ],
+   "validee": [
+    "planifiee",
+    "abandonnee"
+   ],
+   "planifiee": [
+    "validee",
+    "realisee",
+    "abandonnee"
+   ],
+   "realisee": [],
+   "abandonnee": [
+    "proposee"
+   ]
+  },
+  "types_marculus": [
+   "coupe_rase",
+   "eclaircie",
+   "depressage",
+   "observation"
+  ]
+ },
+ "peut_ecrire": false,
+ "genere_a": "2026-10-06T12:00:00+0200"
+}

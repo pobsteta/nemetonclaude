@@ -196,11 +196,19 @@ Le lot 1 tient sans rien changer au déploiement : il s'appuie sur le serveur MC
 **Décisions prises**
 
 - [x] Source du cadastre : GeoJSON Etalab par commune, déjà codé dans `service_cadastre.R` (6 octobre 2026).
+- [x] Public cible : les deux. Vue simple par défaut (synthèse, familles, actions en langage courant) et bascule « Vue experte » mémorisée par lecteur (tous les sous-indicateurs, valeurs brutes, quantités) ; un même lien sert l'élu et le gestionnaire (6 octobre 2026).
+- [x] Hébergement du connecteur distant : une instance par collectif, dont tous les comptes partagent les projets comme dans nemetonshiny. Le mode isolé par compte (`NEMETON_CLAUDE_ISOLATION=utilisateur`) reste disponible et documenté (6 octobre 2026).
+- [x] Fond de contexte cartographique : le vecteur léger (routes, hydrographie BD TOPO découpés au projet) suffit ; l'ortho pré-rendue arrive avec les rasters du lot 4 (6 octobre 2026).
+- [x] Profils experts : les YAML restent côté R, seule source ; le connecteur les sert aux vues et à Claude (6 octobre 2026).
+- [x] Rapport : le PDF Quarto reste la pièce officielle (`generer_rapport`) ; un document Claude commentable sert au travail collectif, sans valeur officielle (6 octobre 2026).
+
+**Décisions du lot 3 — Plan d'actions partagé** (6 octobre 2026)
+
+- [x] Source de vérité : le plan du projet nemeton (`data/action_plan.json`, avec son historique), lu et écrit par le connecteur ; une seule version, partagée avec nemetonshiny. Les autres lecteurs voient les modifications par le suivi du connecteur (environ 30 s).
+- [x] Droits : rôles Keycloak du connecteur. `gestionnaire` et `admin` modifient, `lecteur` consulte et commente (commentaires claude.ai ancrés sur une action).
+- [x] Claude propose, l'humain valide : depuis la vue (`sample`), Claude suggère des actions pour une unité de gestion à partir de ses indicateurs ; elles arrivent en statut « proposée », en ambre, et sont validées ou écartées une par une.
+- [x] Marculus : export seul (paquet terrain GeoPackage + JSON d'une action de martelage, par lien de téléchargement). L'import du martelage reste dans nemetonshiny.
 
 **Questions ouvertes**
 
-- [ ] Public cible du premier lot : gestionnaires experts, élus et propriétaires, ou les deux ? Cela fixe la densité de l'Atlas.
-- [ ] Hébergement du connecteur distant : instance par collectif (modèle actuel, sans isolation entre utilisateurs) ou service mutualisé avec isolation ?
-- [ ] Fond de contexte cartographique : un vecteur léger (routes, hydrographie BD TOPO découpés au projet) suffit-il, ou faut-il une ortho pré-rendue ?
-- [ ] Les profils experts YAML restent-ils côté R (prompts servis par le connecteur) ou passent-ils dans le skill du plugin ?
-- [ ] Le rapport devient-il un document Claude, ou le PDF Quarto reste-t-il la pièce officielle ?
+- [ ] Parallélisme du connecteur distant : un seul processus R sert les requêtes une à une. À revoir si une instance sert de nombreux comptes à la fois.

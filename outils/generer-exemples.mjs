@@ -2,9 +2,10 @@
 //   vues/exemples/selection/{selection.json, commune.geojson, sections.geojson, parcelles.geojson}
 //   vues/exemples/atlas/{atlas.geojson, contexte.geojson}
 //   vues/exemples/calcul/calcul.json
+//   vues/exemples/plan/{plan.json, plan.geojson, contexte.geojson}
 // Le catalogue des familles (vues/exemples/catalogue.json) est celui du cœur
 // nemeton (R/indicator-config.R) ; les valeurs, elles, sont tirées au hasard.
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, copyFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -190,6 +191,61 @@ writeFileSync(join(at, "contexte.geojson"), JSON.stringify(fc([
   { type: "Feature", properties: { couche: "cours_eau", nature: "Ruisseau", nom: "Ruisseau fictif" },
     geometry: { type: "LineString", coordinates: ligne((t) => [LON0 + DX * (14 + 3 * Math.sin(t * 7)), LAT0 + t * NY * DY]) } }
 ])));
+// Plan d'actions : les UG de l'Atlas, et un plan type sur 20 ans.
+const pl = join(ex, "plan");
+mkdirSync(pl, { recursive: true });
+const familleCols = ["ug_id", "label", "groupe", "surface_ha", "famille_carbone", "famille_biodiversite", "famille_eau",
+  "famille_air", "famille_sol", "famille_paysage", "famille_temporel", "famille_risque", "famille_social",
+  "famille_production", "famille_energie", "famille_naturalite"];
+writeFileSync(join(pl, "plan.geojson"), JSON.stringify({
+  type: "FeatureCollection",
+  nemeton: { exemple: true, project_id: atlas.nemeton.project_id, name: atlas.nemeton.name, genere_a: "2026-10-06T12:00:00+0200" },
+  features: features.map((f) => ({ type: "Feature", geometry: f.geometry,
+    properties: Object.fromEntries(familleCols.map((c) => [c, f.properties[c] ?? null])) }))
+}));
+// Même fond de contexte que l'Atlas, écrit plus bas.
+const BASE = 2026;
+const modeles = [
+  ["eclaircie", "moderee", 2, "haute", "planifiee", ["P", "C"], { volume_m3: 85, surface_ha: 3.1, cout_eur: 900, revenu_eur: 4200 }],
+  ["depressage", null, 1, "moyenne", "validee", ["P"], { surface_ha: 2.4, cout_eur: 1800 }],
+  ["cloisonnement", null, 1, "moyenne", "realisee", ["P", "F"], { surface_ha: 4, cout_eur: 1200 }],
+  ["regeneration", null, 6, "moyenne", "proposee", ["B", "T"], { surface_ha: 2 }],
+  ["observation", null, 3, "basse", "planifiee", ["B"], {}],
+  ["coupe_rase", "forte", 14, "basse", "abandonnee", ["P"], { volume_m3: 320, revenu_eur: 19000 }],
+  ["plantation", null, 15, "moyenne", "proposee", ["C", "P"], { surface_ha: 2.8, nb_tiges: 4500, cout_eur: 9800 }],
+  ["protection", null, 2, "haute", "validee", ["B", "N"], { cout_eur: 650 }],
+  ["eclaircie", "faible", 9, "moyenne", "proposee", ["P", "R"], { volume_m3: 60, revenu_eur: 2600 }],
+  ["entretien", null, 4, "basse", "planifiee", ["S", "L"], { cout_eur: 400 }],
+  ["autre", null, 5, "moyenne", "proposee", ["W", "B"], { cout_eur: 2500 }]
+];
+const actionsPlan = [], historique = [];
+modeles.forEach((m, k) => {
+  const u = features[(k * 7 + 3) % features.length].properties;
+  const id = "act_20261006" + String(100000 + k) + "_demo" + k;
+  const claude = m[4] === "proposee" && (k === 6 || k === 8);
+  const a = { id, ug_id: u.ug_id, type: m[0], type_libre: m[0] === "autre" ? "Création d'une mare forestière" : null,
+    intensite: m[1], annee_cible: m[2], annee: BASE + m[2], duree: 1, priorite: m[3], statut: m[4], objectifs_lies: m[5],
+    quantite: m[6], source: { origine: claude ? "claude" : "vue", extrait_texte: claude ? "Biodiversité (B) faible et régénération lente : favoriser le mélange." : null },
+    commentaire: null, cree_par: "gestionnaire", cree_le: "2026-09-1" + (k % 9) + "T09:00:00+0200",
+    ug_label: u.label, propose_par_claude: claude, version: "v" + k };
+  actionsPlan.push(a);
+  historique.push({ ts: a.cree_le, user: "gestionnaire", action_id: id, op: "create" });
+  if (m[4] !== "proposee") historique.push({ ts: "2026-10-01T14:3" + (k % 10) + ":00+0200", user: "gestionnaire", action_id: id, op: "update", champ: "statut", ancien: "proposee", nouveau: m[4] === "realisee" ? "planifiee" : m[4] });
+});
+writeFileSync(join(pl, "plan.json"), JSON.stringify({
+  exemple: true, ok: true, projet: atlas.nemeton.project_id, nom: atlas.nemeton.name,
+  horizon_annees: 20, annee_base: BASE, actions: actionsPlan, historique: historique.reverse(),
+  commentaires_ug: { [features[3].properties.ug_id]: "Peuplement fragilisé par les sécheresses de 2022." },
+  catalogue: {
+    types: ["coupe_rase", "eclaircie", "depressage", "plantation", "regeneration", "cloisonnement", "desserte", "observation", "protection", "entretien", "autre"],
+    statuts: ["proposee", "validee", "planifiee", "realisee", "abandonnee"], priorites: ["haute", "moyenne", "basse"],
+    familles: ["C", "B", "W", "A", "F", "L", "T", "R", "S", "P", "E", "N"],
+    transitions: { proposee: ["validee", "abandonnee"], validee: ["planifiee", "abandonnee"], planifiee: ["validee", "realisee", "abandonnee"], realisee: [], abandonnee: ["proposee"] },
+    types_marculus: ["coupe_rase", "eclaircie", "depressage", "observation"]
+  },
+  peut_ecrire: false, genere_a: "2026-10-06T12:00:00+0200"
+}, null, 1) + "\n");
+
 // Calcul : état figé d'un calcul en cours, sans connecteur.
 const cal = join(ex, "calcul");
 mkdirSync(cal, { recursive: true });
@@ -201,4 +257,5 @@ writeFileSync(join(cal, "calcul.json"), JSON.stringify({
     tache: "B2 — Diversité structurale", ecoule_s: 1694
   }
 }, null, 1) + "\n");
+copyFileSync(join(at, "contexte.geojson"), join(pl, "contexte.geojson"));
 console.log(`${propres.length} parcelles, ${features.length} UG d'exemple écrites dans vues/exemples/.`);
