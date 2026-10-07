@@ -151,3 +151,26 @@ test_that(".zip_base64 rend le fichier zippe en base64, ou signale qu'il est tro
   expect_true(gros$zip_trop_gros)
   expect_null(gros$zip_base64)
 })
+
+test_that("exporter_gpkg n'ajoute le zip qu'a la demande, et laisse passer les erreurs", {
+  dossier <- withr::local_tempdir()
+  f <- file.path(dossier, "resultats_p1.gpkg")
+  writeBin(as.raw(1:100), f)
+  reponse <- .json(list(ok = TRUE, projet = "p1", fichier = f))
+  local_mocked_bindings(.ns = function(nom) function(projet) {
+    if (projet == "inconnu") .json(list(ok = FALSE, erreur = "introuvable")) else reponse
+  })
+  expect_identical(exporter_gpkg_vue("p1"), reponse)
+  x <- jsonlite::fromJSON(exporter_gpkg_vue("p1", zip = TRUE))
+  expect_equal(x$fichier, f)
+  expect_equal(x$zip_nom, "resultats_p1.zip")
+  expect_true(nzchar(x$zip_base64))
+  expect_false(jsonlite::fromJSON(exporter_gpkg_vue("inconnu", zip = TRUE))$ok)
+})
+
+test_that("outils_mcp sert un seul exporter_gpkg, celui qui sait zipper", {
+  noms <- vapply(outils_mcp(), function(o) o@name, "")
+  expect_equal(sum(noms == "exporter_gpkg"), 1L)
+  o <- outils_mcp()[[which(noms == "exporter_gpkg")]]
+  expect_true("zip" %in% names(o@arguments@properties))
+})
