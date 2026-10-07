@@ -125,3 +125,48 @@
 }
 
 .maintenant <- function() format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z")
+
+# Nom affiche des unites de gestion (UGF). A la creation d'un projet,
+# nemetonshiny fait une UGF par parcelle et lui donne pour nom la reference
+# cadastrale de la parcelle (IDU). Tant que ce nom par defaut n'a pas ete
+# change dans l'application, les vues affichent « UGF <n> » (n tire de
+# l'identifiant ug_<n>) et gardent la parcelle en information secondaire.
+# Un nom choisi dans nemetonshiny est affiche tel quel.
+.RE_IDU <- "^[0-9]{5}[0-9A-Z]{3}[0-9A-Z]{2}[0-9]{4}$"
+
+# « 212000000A0036 » -> « A 36 » ; une reference d'une autre forme reste telle.
+.ref_courte <- function(idu) {
+  idu <- as.character(idu)
+  ok <- grepl(.RE_IDU, idu)
+  section <- sub("^0+", "", substr(idu, 9, 10))
+  numero <- suppressWarnings(as.integer(substr(idu, 11, 14)))
+  ifelse(ok & !is.na(numero), paste(section, numero), idu)
+}
+
+#' Display identity of management units (pure function, tested)
+#'
+#' @param ug_id,label Character vectors (nemetonshiny's ids and labels).
+#' @param refs Cadastral references of each unit, comma separated
+#'   (`cadastral_refs` of nemetonshiny's `ug_build_sf()`), or `NULL`.
+#' @return data.frame: `label` (displayed name), `label_cadastre` (the
+#'   stored label), `label_par_defaut`, `parcelles` (short references,
+#'   comma separated).
+#' @noRd
+.identites_ug <- function(ug_id, label, refs = NULL) {
+  n <- length(ug_id)
+  label <- as.character(label %||% rep(NA_character_, n))
+  refs <- if (is.null(refs)) rep("", n) else as.character(refs)
+  refs[is.na(refs)] <- ""
+  liste <- lapply(strsplit(refs, ",", fixed = TRUE), function(x) { x <- trimws(x); x[nzchar(x)] })
+  defaut <- vapply(seq_len(n), function(i) {
+    l <- label[i]
+    is.na(l) || !nzchar(trimws(l)) || l %in% liste[[i]] || grepl(.RE_IDU, l)
+  }, logical(1))
+  numero <- sub("^.*?([0-9]+)$", "\\1", ug_id)
+  a_numero <- grepl("[0-9]+$", ug_id)
+  nom <- ifelse(defaut & a_numero, paste("UGF", numero),
+                ifelse(is.na(label) | !nzchar(label), ug_id, label))
+  data.frame(label = nom, label_cadastre = label, label_par_defaut = defaut,
+             parcelles = vapply(liste, function(x) paste(.ref_courte(x), collapse = ", "), ""),
+             stringsAsFactors = FALSE)
+}

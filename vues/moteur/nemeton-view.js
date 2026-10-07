@@ -92,6 +92,18 @@
       { day: "numeric", month: "long", year: "numeric" });
   };
 
+  /**
+   * Parcelles cadastrales d'une unité de gestion, en clair (« parcelle A 36 »,
+   * « parcelles A 15, A 16 »), d'après la propriété `parcelles` écrite par le
+   * connecteur. Chaîne vide si elle manque.
+   */
+  NV.parcellesUG = function (p) {
+    var refs = p && p.parcelles ? String(p.parcelles).split(",").map(function (x) { return x.trim(); }).filter(Boolean) : [];
+    if (!refs.length) return "";
+    var liste = refs.length > 4 ? refs.slice(0, 4).join(", ") + " +" + (refs.length - 4) : refs.join(", ");
+    return NV.t(refs.length > 1 ? "nv_parcelles" : "nv_parcelle", { liste: liste });
+  };
+
   NV.echapper = function (s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
@@ -430,7 +442,8 @@
       mcp_annule: "Appel annulé.",
       mcp_indisponible: "Le serveur nemeton ne répond pas pour le moment. Réessayez dans un instant.",
       mcp_erreur_outil: "nemeton a refusé l'opération : {message}",
-      mcp_erreur: "Appel au connecteur nemeton en échec ({code})."
+      mcp_erreur: "Appel au connecteur nemeton en échec ({code}).",
+      nv_parcelle: "parcelle {liste}", nv_parcelles: "parcelles {liste}"
     },
     en: {
       mcp_non_connecte: "The nemeton connector does not answer here: open this view in the Claude desktop app where the nemeton server is installed.",
@@ -441,7 +454,8 @@
       mcp_annule: "Call cancelled.",
       mcp_indisponible: "The nemeton server is not answering right now. Try again in a moment.",
       mcp_erreur_outil: "nemeton refused the operation: {message}",
-      mcp_erreur: "Call to the nemeton connector failed ({code})."
+      mcp_erreur: "Call to the nemeton connector failed ({code}).",
+      nv_parcelle: "parcel {liste}", nv_parcelles: "parcels {liste}"
     }
   });
 

@@ -311,7 +311,7 @@
   }
   function visible(p) {
     if (!filtre) return true;
-    return (String(p.label) + " " + String(p.groupe || "") + " " + p.ug_id).toLowerCase().indexOf(filtre) >= 0;
+    return (String(p.label) + " " + String(p.groupe || "") + " " + p.ug_id + " " + String(p.parcelles || "") + " " + String(p.label_cadastre || "")).toLowerCase().indexOf(filtre) >= 0;
   }
   function style(p) {
     var actif = choisie === p.ug_id || comparee === p.ug_id;
@@ -436,7 +436,7 @@
     var q = comparee ? props.get(comparee) : null;
     $("fiche-titre").textContent = p.label;
     $("fiche-groupe").textContent = p.groupe || "";
-    $("fiche-surface").textContent = NV.nombre(p.surface_ha, 2) + " ha · " + p.ug_id;
+    $("fiche-surface").textContent = [NV.nombre(p.surface_ha, 2) + " ha", NV.parcellesUG(p) || p.ug_id].join(" · ");
     var vals = catalogue.map(function (f) { var v = p[f.colonne]; return v == null ? null : Number(v); });
     var dispo = vals.filter(function (v) { return v != null; });
     $("fiche-moyenne").textContent = dispo.length ? NV.nombre(dispo.reduce(function (a, b) { return a + b; }, 0) / dispo.length, 1) : "—";
@@ -621,7 +621,8 @@
           couches.set(p.ug_id, c); props.set(p.ug_id, p);
           c.bindTooltip(function () {
             var v = bivarie ? null : p[fam(famille).colonne];
-            return "<strong>" + E(p.label) + "</strong>" + (p.groupe ? "<br>" + E(p.groupe) : "") + "<br>" +
+            return "<strong>" + E(p.label) + "</strong>" + (p.groupe ? "<br>" + E(p.groupe) : "") +
+              (NV.parcellesUG(p) ? "<br><span class='nv-muet'>" + E(NV.parcellesUG(p)) + "</span>" : "") + "<br>" +
               (bivarie ? E(fam(bivA).code) + " <span class='nv-num'>" + NV.nombre(p[fam(bivA).colonne], 0) + "</span> · " +
                 E(fam(bivB).code) + " <span class='nv-num'>" + NV.nombre(p[fam(bivB).colonne], 0) + "</span>"
                 : E(fam(famille).code) + " <span class='nv-num'>" + (v == null ? E(NV.t("manquant")) : NV.nombre(v, 0)) + "</span>");

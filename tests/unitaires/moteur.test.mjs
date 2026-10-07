@@ -178,3 +178,15 @@ test("messageMcp oriente vers le bon réglage selon le serveur", () => {
   NV.SERVEUR = "host:nemeton";
   assert.match(NV.messageMcp({ code: "server_not_connected" }), /application Claude de bureau/);
 });
+
+test("parcellesUG met les parcelles d'une unité en clair", () => {
+  NV.lang = "fr";
+  assert.equal(NV.parcellesUG({ parcelles: "A 36" }), "parcelle A 36");
+  assert.equal(NV.parcellesUG({ parcelles: "A 15, A 16" }), "parcelles A 15, A 16");
+  assert.equal(NV.parcellesUG({ parcelles: "A 1, A 2, A 3, A 4, A 5, A 6" }), "parcelles A 1, A 2, A 3, A 4 +2");
+  assert.equal(NV.parcellesUG({ parcelles: "" }), "");
+  assert.equal(NV.parcellesUG({}), "");
+  NV.lang = "en";
+  assert.equal(NV.parcellesUG({ parcelles: "A 36" }), "parcel A 36");
+  NV.lang = "fr";
+});

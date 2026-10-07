@@ -93,7 +93,9 @@ plan_actions <- function(projet, langue = "fr", geojson = TRUE, historique = 300
     plan <- .ns("load_action_plan")(id)
     if (is.null(plan)) .abort("Projet {.val {id}} introuvable.", "nemetonshiny_projet_introuvable")
     p <- .ug_ids_projet(id)
-    labels <- if (!is.null(p$ug)) stats::setNames(as.character(p$ug$label %||% p$ug$ug_id), p$ids)
+    labels <- if (!is.null(p$ug)) {
+      stats::setNames(.identites_ug(p$ids, p$ug$label, p$ug$cadastral_refs)$label, p$ids)
+    }
     base <- .ns("action_plan_annee_base")(plan)
     actions <- lapply(plan$actions %||% list(), .action_pour_vue, annee_base = base, labels = labels)
     audit <- plan$audit %||% list()
@@ -122,9 +124,14 @@ plan_actions <- function(projet, langue = "fr", geojson = TRUE, historique = 300
 .ecrire_plan_geojson <- function(id, p, langue) {
   ug <- p$ug
   df <- sf::st_drop_geometry(ug)
+  ident <- .identites_ug(as.character(df$ug_id), df$label, df$cadastral_refs)
   props <- data.frame(
     ug_id = as.character(df$ug_id),
-    label = as.character(df$label %||% df$ug_id),
+    label = ident$label,
+    label_cadastre = ident$label_cadastre,
+    label_par_defaut = ident$label_par_defaut,
+    parcelles = ident$parcelles,
+    n_parcelles = if (!is.null(df$n_tenements)) as.integer(df$n_tenements) else NA_integer_,
     groupe = as.character(df$groupe %||% NA_character_),
     surface_ha = if (!is.null(df$surface_m2)) .arrondir(as.numeric(df$surface_m2) / 1e4, 2) else NA_real_,
     stringsAsFactors = FALSE)

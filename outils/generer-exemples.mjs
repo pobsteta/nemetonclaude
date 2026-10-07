@@ -124,11 +124,21 @@ for (const p of boisees) {
 const groupes = ["Futaie régulière", "Futaie irrégulière", "Taillis sous futaie", "Îlot de sénescence"];
 const borne = (x) => Math.max(0, Math.min(100, x));
 const features = ugs.map((u, k) => {
+  // Comme le connecteur : une UGF d'une seule parcelle garde le nom par
+  // défaut de nemetonshiny (sa référence cadastrale) et s'affiche « UGF n » ;
+  // les autres portent un nom choisi.
+  const refs = u.membres.map((m) => m.properties.idu);
+  const courte = (idu) => idu.slice(8, 10).replace(/^0+/, "") + " " + Number(idu.slice(10));
+  const defaut = refs.length === 1;
   const props = {
-    ug_id: "UG" + String(k + 1).padStart(3, "0"),
-    label: "UG " + (k + 1),
+    ug_id: "ug_" + (k + 1),
+    label: defaut ? "UGF " + (k + 1) : "UG " + (k + 1),
     groupe: groupes[(u.i + u.j) % groupes.length],
-    surface_ha: Math.round(u.membres.reduce((s, m) => s + m.properties.contenance, 0) / 100) / 100
+    surface_ha: Math.round(u.membres.reduce((s, m) => s + m.properties.contenance, 0) / 100) / 100,
+    label_cadastre: defaut ? refs[0] : "UG " + (k + 1),
+    label_par_defaut: defaut,
+    parcelles: refs.map(courte).join(", "),
+    n_parcelles: refs.length
   };
   // Gradients spatiaux pour que les cartes racontent quelque chose.
   const x = (u.i - 11) / 12, y = (u.j - 3) / 11;
@@ -194,7 +204,7 @@ writeFileSync(join(at, "contexte.geojson"), JSON.stringify(fc([
 // Plan d'actions : les UG de l'Atlas, et un plan type sur 20 ans.
 const pl = join(ex, "plan");
 mkdirSync(pl, { recursive: true });
-const familleCols = ["ug_id", "label", "groupe", "surface_ha", "famille_carbone", "famille_biodiversite", "famille_eau",
+const familleCols = ["ug_id", "label", "label_cadastre", "label_par_defaut", "parcelles", "n_parcelles", "groupe", "surface_ha", "famille_carbone", "famille_biodiversite", "famille_eau",
   "famille_air", "famille_sol", "famille_paysage", "famille_temporel", "famille_risque", "famille_social",
   "famille_production", "famille_energie", "famille_naturalite"];
 writeFileSync(join(pl, "plan.geojson"), JSON.stringify({
