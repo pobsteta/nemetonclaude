@@ -1,3 +1,7 @@
+# nemetonclaude 0.3.1 (2026-10-07)
+
+- Affiche « UGF n » pour les UGF qui gardent leur nom cadastral (#7)
+
 # nemetonclaude 0.3.0 (2026-10-07)
 
 - Lot 3 : plan d'actions partagé (#6)
