@@ -7,3 +7,5 @@ __*.html
 package-lock.json
 lcov.info
 Rplots.pdf
+# Fichiers de diagnostic écrits par testthat quand un test échoue
+r/tests/testthat/_problems/
