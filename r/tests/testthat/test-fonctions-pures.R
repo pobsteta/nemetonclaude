@@ -122,3 +122,16 @@ test_that(".durees_calcul compte depuis le lancement, ou jusqu'a la fin", {
   expect_null(.durees_calcul(list(lance_a = "n'importe quoi"), t0)$ecoule_s)
   expect_match(.durees_calcul(list(), t0)$maintenant, "^2026-10-06T10:00:00[+-][0-9]{4}$")
 })
+
+test_that(".identites_ug nomme UGF n les unites qui gardent leur reference cadastrale", {
+  x <- .identites_ug(c("ug_1", "ug_12", "ug_3", "ug_4"),
+                     c("212000000A0036", "Futaie du haut", NA, "212000000B0102"),
+                     c("212000000A0036", "212000000A0015, 212000000A0016", "212000000C0007", ""))
+  expect_equal(x$label, c("UGF 1", "Futaie du haut", "UGF 3", "UGF 4"))
+  expect_equal(x$label_par_defaut, c(TRUE, FALSE, TRUE, TRUE))
+  expect_equal(x$parcelles, c("A 36", "A 15, A 16", "C 7", ""))
+  expect_equal(x$label_cadastre[1], "212000000A0036")
+  # Sans numero dans l'identifiant, le nom stocke reste.
+  expect_equal(.identites_ug("parcelle_x", "212000000A0036")$label, "212000000A0036")
+  expect_equal(.ref_courte(c("212000000AB0007", "21200000AB0007", "libre")), c("212000000AB0007", "AB 7", "libre"))
+})

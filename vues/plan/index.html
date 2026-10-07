@@ -519,7 +519,7 @@
     if (!u) { bloc.hidden = true; bloc.innerHTML = ""; return; }
     bloc.hidden = false;
     var html = "<h3>" + E(u.label || etat.ug) + "</h3><div class='nv-muet' style='font-size:13px'>" +
-      E([u.surface_ha != null ? NV.nombre(u.surface_ha, 2) + " ha" : null, u.groupe].filter(Boolean).join(" · ")) + "</div>";
+      E([u.surface_ha != null ? NV.nombre(u.surface_ha, 2) + " ha" : null, NV.parcellesUG(u), u.groupe].filter(Boolean).join(" · ")) + "</div>";
     var note = etat.plan && etat.plan.commentaires_ug && etat.plan.commentaires_ug[etat.ug];
     if (note) html += "<div><span class='nv-etiquette'>" + E(t("commentaire_ug")) + "</span><p style='margin:2px 0 0;white-space:pre-wrap'>" + E(note) + "</p></div>";
     var scores = FAMILLES.filter(function (f) { return u[f[1]] != null; });
@@ -945,7 +945,9 @@
             etat.ugs.set(id, f.properties); etat.couches.set(id, couche);
             couche.bindTooltip(function () {
               var n = actionsUG(id).length, a = prochaine(id);
-              return "<strong>" + E(f.properties.label || id) + "</strong><br>" + E(t("n_actions", { n: n })) + (a ? "<br>" + E(a.annee + " · " + titreAction(a)) : "");
+              var parc = NV.parcellesUG(f.properties);
+              return "<strong>" + E(f.properties.label || id) + "</strong>" + (parc ? "<br><span class='nv-muet'>" + E(parc) + "</span>" : "") +
+                "<br>" + E(t("n_actions", { n: n })) + (a ? "<br>" + E(a.annee + " · " + titreAction(a)) : "");
             }, { sticky: true });
             couche.on("click", function () { choisirUG(id, false); });
             groupe.addLayer(couche);

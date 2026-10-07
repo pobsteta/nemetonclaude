@@ -70,6 +70,20 @@
   out
 }
 
+# Remplace le nom par defaut des UGF (reference cadastrale) par « UGF n »,
+# et ajoute les parcelles en clair (voir .identites_ug).
+.avec_identites <- function(props, projet, n_parcelles = NULL) {
+  ug <- tryCatch(.ns("ug_build_sf")(projet), error = function(e) NULL)
+  refs <- if (!is.null(ug)) as.character(ug$cadastral_refs)[match(props$ug_id, as.character(ug$ug_id))]
+  id <- .identites_ug(props$ug_id, props$label, refs)
+  props$label <- id$label
+  props$label_cadastre <- id$label_cadastre
+  props$label_par_defaut <- id$label_par_defaut
+  props$parcelles <- id$parcelles
+  if (!is.null(n_parcelles)) props$n_parcelles <- as.integer(n_parcelles)
+  props
+}
+
 .entete_atlas <- function(id, s, langue) {
   list(
     project_id = id,
@@ -114,7 +128,8 @@ vue_atlas <- function(projet, langue = "fr", tolerance_m = 1, bruts = FALSE,
              "nemetonshiny_sans_indicateurs")
     }
     fam <- lu$familles
-    props <- .proprietes_atlas(sf::st_drop_geometry(fam), bruts = bruts)
+    df <- sf::st_drop_geometry(fam)
+    props <- .avec_identites(.proprietes_atlas(df, bruts = bruts), lu$projet, df$n_tenements)
     x <- sf::st_sf(props, geometry = sf::st_geometry(fam))
     insee <- tryCatch(as.character(lu$projet$parcels$code_insee[1]), error = function(e) NA)
     crs_m <- .crs_metrique(if (is.na(insee)) "" else insee)
@@ -159,6 +174,11 @@ detail_indicateur <- function(projet, ug, code, langue = "fr") {
     df <- sf::st_drop_geometry(df)
     ligne <- which(as.character(df$ug_id) == as.character(ug))
     if (!length(ligne) && "label" %in% names(df)) ligne <- which(df$label == ug)
+    if (!length(ligne)) {
+      # Nom affiche par les vues (« UGF 3 »).
+      noms <- .identites_ug(as.character(df$ug_id), df$label)$label
+      ligne <- which(tolower(noms) == tolower(trimws(ug)))
+    }
     if (length(ligne) != 1L) {
       .abort("Unit\u00e9 de gestion {.val {ug}} introuvable.", "nemetonclaude_ug_introuvable",
              candidats = utils::head(as.character(df$ug_id), 20))

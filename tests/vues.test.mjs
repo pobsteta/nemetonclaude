@@ -149,9 +149,14 @@ await test("Atlas : rail, carte, tableau, fiche, comparaison, bivarié", async (
   const filtrees = await page.$$eval("#lignes tr", (t) => t.length);
   assert.ok(filtrees > 0 && filtrees < 60);
   await page.fill("#filtre", "");
+  // Une UGF d'une seule parcelle porte le nom « UGF n » ; sa référence cadastrale reste cherchable.
+  await page.fill("#filtre", "UGF 4");
+  assert.equal(await page.textContent("#lignes tr:first-child td:first-child"), "UGF 4");
+  await page.fill("#filtre", "");
   // Clic sur une ligne : fiche avec radar 12 axes.
   await page.click("#lignes tr:first-child");
   assert.equal(await page.isVisible("#fiche"), true);
+  assert.match(await page.textContent("#fiche-surface"), / ha · parcelles? [A-Z]+ \d+/);
   assert.equal(await page.$$eval("#radar .nv-radar__axe", (a) => a.length), 12);
   const raisons = await page.$$eval(".at__ind-raison", (r) => r.map((x) => x.textContent));
   assert.ok(raisons.some((t) => /hors zone urbaine/.test(t)), "raison A5 affichée");
@@ -403,6 +408,7 @@ await test("Plan : exemple en lecture seule, calendrier, filtre par unité, vue 
   await page.locator("#carte path.leaflet-interactive").nth(3).click({ force: true });
   assert.equal(await page.isVisible("#filtre-ug"), true);
   assert.equal(await page.isVisible("#bloc-ug"), true);
+  assert.match(await page.textContent("#bloc-ug"), /parcelles? [A-Z]+ \d+/);
   void ugAvecAction;
   await capture(page, "plan-ug");
   await ctx.close();

@@ -8,7 +8,7 @@
  "actions": [
   {
    "id": "act_20261006100000_demo0",
-   "ug_id": "UG004",
+   "ug_id": "ug_4",
    "type": "eclaircie",
    "type_libre": null,
    "intensite": "moderee",
@@ -34,13 +34,13 @@
    "commentaire": null,
    "cree_par": "gestionnaire",
    "cree_le": "2026-09-10T09:00:00+0200",
-   "ug_label": "UG 4",
+   "ug_label": "UGF 4",
    "propose_par_claude": false,
    "version": "v0"
   },
   {
    "id": "act_20261006100001_demo1",
-   "ug_id": "UG011",
+   "ug_id": "ug_11",
    "type": "depressage",
    "type_libre": null,
    "intensite": null,
@@ -69,7 +69,7 @@
   },
   {
    "id": "act_20261006100002_demo2",
-   "ug_id": "UG018",
+   "ug_id": "ug_18",
    "type": "cloisonnement",
    "type_libre": null,
    "intensite": null,
@@ -99,7 +99,7 @@
   },
   {
    "id": "act_20261006100003_demo3",
-   "ug_id": "UG025",
+   "ug_id": "ug_25",
    "type": "regeneration",
    "type_libre": null,
    "intensite": null,
@@ -128,7 +128,7 @@
   },
   {
    "id": "act_20261006100004_demo4",
-   "ug_id": "UG032",
+   "ug_id": "ug_32",
    "type": "observation",
    "type_libre": null,
    "intensite": null,
@@ -154,7 +154,7 @@
   },
   {
    "id": "act_20261006100005_demo5",
-   "ug_id": "UG039",
+   "ug_id": "ug_39",
    "type": "coupe_rase",
    "type_libre": null,
    "intensite": "forte",
@@ -183,7 +183,7 @@
   },
   {
    "id": "act_20261006100006_demo6",
-   "ug_id": "UG046",
+   "ug_id": "ug_46",
    "type": "plantation",
    "type_libre": null,
    "intensite": null,
@@ -214,7 +214,7 @@
   },
   {
    "id": "act_20261006100007_demo7",
-   "ug_id": "UG053",
+   "ug_id": "ug_53",
    "type": "protection",
    "type_libre": null,
    "intensite": null,
@@ -243,7 +243,7 @@
   },
   {
    "id": "act_20261006100008_demo8",
-   "ug_id": "UG060",
+   "ug_id": "ug_60",
    "type": "eclaircie",
    "type_libre": null,
    "intensite": "faible",
@@ -267,13 +267,13 @@
    "commentaire": null,
    "cree_par": "gestionnaire",
    "cree_le": "2026-09-18T09:00:00+0200",
-   "ug_label": "UG 60",
+   "ug_label": "UGF 60",
    "propose_par_claude": true,
    "version": "v8"
   },
   {
    "id": "act_20261006100009_demo9",
-   "ug_id": "UG007",
+   "ug_id": "ug_7",
    "type": "entretien",
    "type_libre": null,
    "intensite": null,
@@ -302,7 +302,7 @@
   },
   {
    "id": "act_20261006100010_demo10",
-   "ug_id": "UG014",
+   "ug_id": "ug_14",
    "type": "autre",
    "type_libre": "Création d'une mare forestière",
    "intensite": null,
@@ -462,7 +462,7 @@
   }
  ],
  "commentaires_ug": {
-  "UG004": "Peuplement fragilisé par les sécheresses de 2022."
+  "ug_4": "Peuplement fragilisé par les sécheresses de 2022."
  },
  "catalogue": {
   "types": [
