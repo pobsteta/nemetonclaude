@@ -1,3 +1,7 @@
+# nemetonclaude 0.4.0 (2026-10-07)
+
+- Propose le GeoPackage au téléchargement dans l'Atlas, comme le CSV (#10)
+
 # nemetonclaude 0.3.1 (2026-10-07)
 
 - Affiche « UGF n » pour les UGF qui gardent leur nom cadastral (#7)
