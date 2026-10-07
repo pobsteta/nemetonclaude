@@ -1,6 +1,6 @@
 Package: nemetonclaude
 Title: Connecteur MCP de Nemeton pour les vues Claude
-Version: 0.2.0
+Version: 0.3.0
 Authors@R: person("Pascal", "Obstetar", email = "pascal.obstetar@gmail.com",
     role = c("aut", "cre"))
 Description: Etend le serveur MCP de 'nemetonshiny' avec les outils du

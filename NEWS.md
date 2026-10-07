@@ -1,3 +1,7 @@
+# nemetonclaude 0.3.0 (2026-10-07)
+
+- Lot 3 : plan d'actions partagé (#6)
+
 # nemetonclaude 0.2.0 (2026-10-06)
 
 - Lot 2 : connecteur distant (HTTP, Keycloak) et vue Calcul (#5)
