@@ -176,12 +176,22 @@ Chaque vue = sa page (`vues/<vue>/index.html`) + le moteur commun
 
 ## Contrat de données de l'Atlas
 
-Propriétés de chaque entité : `ug_id`, `label`, `groupe`, `surface_ha` ; les
+Propriétés de chaque entité : `ug_id`, `label`, `groupe`, `surface_ha`,
+`label_cadastre`, `label_par_defaut`, `parcelles`, `n_parcelles` ; les
 12 `famille_*` (0–100 : `famille_carbone`, `famille_biodiversite`,
 `famille_eau`, `famille_air`, `famille_sol`, `famille_paysage`,
 `famille_temporel`, `famille_risque`, `famille_social`, `famille_production`,
 `famille_energie`, `famille_naturalite`) ; les `indicateur_<code>_<slug>_norm`
 (0–100) ; les `.<code>_status` qui expliquent une valeur manquante.
+
+`label` est le nom affiché de l'unité de gestion (UGF). nemetonshiny crée
+une UGF par parcelle et lui donne pour nom sa référence cadastrale : tant que
+ce nom n'a pas été changé dans l'application, `label` vaut « UGF <n> »
+(`label_par_defaut = true`, nom stocké dans `label_cadastre`) et `parcelles`
+donne les parcelles en clair (« A 15, A 16 »). Dans la conversation, nommer
+les unités comme les vues (« UGF 3, parcelle A 13 ») ; `detail_indicateur`
+accepte `ug_id`, le nom stocké ou le nom affiché. Pour de vrais noms, les UGF
+se regroupent et se renomment dans nemetonshiny (onglet Unités de gestion).
 
 En-tête `nemeton` : `project_id`, `name`, `global_score`, `ndp_level`,
 `ndp_name`, `confidence`, `updated_at`, `langue`, `n_ugf`, `familles`
