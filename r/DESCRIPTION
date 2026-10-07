@@ -14,7 +14,7 @@ License: EUPL-1.2
 Encoding: UTF-8
 Depends: R (>= 4.1.0)
 Imports: nemetonshiny (>= 1.0.0), nemeton (>= 1.0.0), sf, jsonlite, httr2,
-    cli, ellmer, rlang, openssl, jose, httpuv
+    cli, ellmer, rlang, openssl, jose, httpuv, zip
 Suggests: mcptools (>= 1.0.3), happign, testthat (>= 3.0.0), withr
 Remotes: pobsteta/nemetonshiny, pobsteta/nemeton@*release
 Config/testthat/edition: 3

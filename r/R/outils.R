@@ -39,12 +39,16 @@ outils_mcp <- function() {
     }
     o
   })
-  existants <- Filter(function(o) o@name != "etat_calcul", existants)
+  existants <- Filter(function(o) !o@name %in% c("etat_calcul", "exporter_gpkg"), existants)
   nouveaux <- list(
     .outil(etat_calcul_vue, "etat_calcul",
       "State of a project's background computation: status (lancement, en_cours, termine, echec, annule, aucun), progress, indicators done and total, current task, elapsed seconds (ecoule_s, computed by the server), error and log tail on failure.",
       list(projet = projet_arg),
       lecture = TRUE),
+    .outil(exporter_gpkg_vue, "exporter_gpkg",
+      "Write the GeoPackage of a computed project's results (one feature per management unit) and return the file path. With zip = true, also return the GeoPackage zipped and base64 encoded (zip_base64, zip_nom, zip_taille) so a view can offer it as a download; above 15 MB only zip_trop_gros is set.",
+      list(projet = projet_arg,
+           zip = b("Also return the zipped GeoPackage inline (default false).", required = FALSE))),
     .outil(chercher_commune, "chercher_commune",
       "Find the INSEE code of a French commune from its department (code or name) and its name. Several matches (homonyms, delegated communes): returns candidates with choix_requis = true; ask the user, never pick for them. Use insee_cadastre for the cadastre.",
       list(departement = t("Department code ('21', '2A', '974') or name ('Cote-d'Or')."),
@@ -170,6 +174,30 @@ etat_calcul_vue <- function(projet) {
   x <- tryCatch(jsonlite::fromJSON(texte, simplifyVector = FALSE), error = function(e) NULL)
   if (!isTRUE(x$ok)) return(texte)
   .json(c(x, .durees_calcul(x)))
+}
+
+# exporter_gpkg de nemetonshiny, plus le GeoPackage zippe en base64 a la
+# demande : les vues ne peuvent ni lire un chemin du serveur ni proposer
+# un .gpkg au telechargement (le .zip est accepte).
+.ZIP_MAX_OCTETS <- 15 * 1024^2
+
+exporter_gpkg_vue <- function(projet, zip = FALSE) {
+  texte <- .ns("mcp_exporter_gpkg")(projet)
+  x <- tryCatch(jsonlite::fromJSON(texte, simplifyVector = FALSE), error = function(e) NULL)
+  if (!isTRUE(x$ok) || !isTRUE(zip)) return(texte)
+  .json(c(x, .zip_base64(x$fichier)))
+}
+
+.zip_base64 <- function(fichier, max_octets = .ZIP_MAX_OCTETS) {
+  nom <- paste0(tools::file_path_sans_ext(basename(fichier)), ".zip")
+  archive <- file.path(tempfile("gpkg"), nom)
+  dir.create(dirname(archive))
+  on.exit(unlink(dirname(archive), recursive = TRUE), add = TRUE)
+  zip::zip(archive, fichier, mode = "cherry-pick")
+  taille <- file.size(archive)
+  if (taille > max_octets) return(list(zip_nom = nom, zip_taille = taille, zip_trop_gros = TRUE))
+  list(zip_nom = nom, zip_taille = taille,
+       zip_base64 = openssl::base64_encode(readBin(archive, "raw", taille), linebreaks = FALSE))
 }
 
 .durees_calcul <- function(x, maintenant = Sys.time()) {

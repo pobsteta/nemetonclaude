@@ -254,6 +254,8 @@
       contexte_ug: "Contexte : {ug} · {famille}", contexte_projet: "Contexte : projet · {famille}",
       export_csv: "CSV", export_gpkg: "GeoPackage", csv_ok: "Fichier CSV proposé au téléchargement.",
       csv_refus: "Téléchargement non effectué.", gpkg_ok: "GeoPackage écrit : {f}", gpkg_cours: "Export du GeoPackage…",
+      gpkg_ok_zip: "GeoPackage (zip) proposé au téléchargement.", gpkg_refus: "Le GeoPackage n'a pas pu être téléchargé ici.",
+      gpkg_lien: "Télécharger le GeoPackage (lien temporaire)", gpkg_trop_gros: "GeoPackage trop volumineux pour la vue, écrit sur le serveur : {f}",
       erreur_donnees: "Les données de l'Atlas n'ont pas pu être chargées : {message}",
       erreur_ia: "Claude n'a pas pu répondre : {message}",
       biv_titre: "{a} × {b}", famille_titre: "{f} · score 0–100",
@@ -275,6 +277,8 @@
       contexte_ug: "Context: {ug} · {famille}", contexte_projet: "Context: project · {famille}",
       export_csv: "CSV", export_gpkg: "GeoPackage", csv_ok: "CSV file offered for download.",
       csv_refus: "Download not done.", gpkg_ok: "GeoPackage written: {f}", gpkg_cours: "Exporting the GeoPackage…",
+      gpkg_ok_zip: "GeoPackage (zip) offered for download.", gpkg_refus: "The GeoPackage could not be downloaded here.",
+      gpkg_lien: "Download the GeoPackage (temporary link)", gpkg_trop_gros: "GeoPackage too large for the view, written on the server: {f}",
       erreur_donnees: "The atlas data could not be loaded: {message}",
       erreur_ia: "Claude could not answer: {message}",
       biv_titre: "{a} × {b}", famille_titre: "{f} · score 0–100",
@@ -571,9 +575,30 @@
     if (!mcp) return;
     var b = this; b.disabled = true;
     NV.annoncer($("statut-export"), NV.t("gpkg_cours"), 0);
-    NV.appeler(mcp, "exporter_gpkg", { projet: entete.project_id })
-      .then(function (r) { NV.annoncer($("statut-export"), NV.t("gpkg_ok", { f: r.fichier }), 0); })
-      .catch(function (e) { NV.annoncer($("statut-export"), NV.messageMcp(e), 0); })
+    var statut = $("statut-export");
+    NV.appeler(mcp, "exporter_gpkg", { projet: entete.project_id, zip: !!downloads })
+      .then(function (r) {
+        // Comme le CSV : le GeoPackage zippé (le .gpkg seul n'est pas
+        // accepté au téléchargement), sinon le lien du connecteur distant,
+        // sinon le chemin écrit par le serveur local.
+        if (r.zip_base64 && downloads) {
+          var octets = Uint8Array.from(atob(r.zip_base64), function (c) { return c.charCodeAt(0); });
+          return downloads.save({ filename: r.zip_nom, data: new Blob([octets]) })
+            .then(function () { NV.annoncer(statut, NV.t("gpkg_ok_zip"), 0); },
+                  function (e) { NV.annoncer(statut, NV.t(e && e.code === "declined" ? "csv_refus" : "gpkg_refus"), 0); });
+        }
+        var lien = r.urls && r.fichier ? r.urls[r.fichier] : null;
+        if (lien) {
+          statut.textContent = "";
+          var a = document.createElement("a");
+          a.href = lien; a.target = "_blank"; a.rel = "noopener";
+          a.textContent = NV.t("gpkg_lien");
+          statut.appendChild(a);
+          return;
+        }
+        NV.annoncer(statut, NV.t(r.zip_trop_gros ? "gpkg_trop_gros" : "gpkg_ok", { f: r.fichier }), 0);
+      })
+      .catch(function (e) { NV.annoncer(statut, NV.messageMcp(e), 0); })
       .then(function () { b.disabled = false; });
   });
 

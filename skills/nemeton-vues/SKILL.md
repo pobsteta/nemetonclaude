@@ -31,7 +31,7 @@ Référence : `specs/BRIEF-visualisation-nemeton-claude.md`.
 | veut voir, explorer ou partager les résultats d'un projet calculé | **Atlas** (`vues/atlas/`) | `vue_atlas`, `contexte_carto` (facultatif), `detail_indicateur` (depuis la vue) |
 | lance ou attend un calcul | **Calcul** (`vues/calcul/`) | `lancer_calcul`, `etat_calcul` (suivi depuis la vue), `annuler_calcul` |
 | veut planifier, valider ou partager des actions sylvicoles | **Plan d'actions** (`vues/plan/`) | `plan_actions`, `ajouter_action`, `modifier_action`, `supprimer_action`, `profils_experts`, `exporter_marculus` |
-| veut un rapport, un GeoPackage | conversation | `generer_rapport` (pièce officielle, PDF), `exporter_gpkg` (connecteur distant : lien `urls`) |
+| veut un rapport, un GeoPackage | conversation | `generer_rapport` (pièce officielle, PDF), `exporter_gpkg` (connecteur distant : lien `urls` ; avec `zip = true`, le GeoPackage zippé en base64, que la vue Atlas propose au téléchargement comme le CSV) |
 | veut éditer les unités de gestion | application nemetonshiny | `url_app` |
 
 ## Parcours « créer son premier projet »
