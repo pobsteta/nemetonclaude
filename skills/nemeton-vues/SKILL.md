@@ -1,6 +1,6 @@
 ---
 name: nemeton-vues
-description: Créer un projet nemeton et publier ses vues interactives dans Claude (Sélection des parcelles, Calcul en cours, Atlas du projet) à partir du connecteur MCP nemeton, local ou distant. À utiliser dès qu'un utilisateur parle de diagnostiquer une forêt, de créer un projet nemeton, de choisir des parcelles cadastrales, de lancer ou suivre un calcul, ou de voir, explorer ou partager les résultats d'un projet (familles, indicateurs, carte, radar).
+description: Créer un projet nemeton et publier ses vues interactives dans Claude (Sélection des parcelles, Calcul en cours, Atlas du projet, Plan d'actions partagé) à partir du connecteur MCP nemeton, local ou distant. À utiliser dès qu'un utilisateur parle de diagnostiquer une forêt, de créer un projet nemeton, de choisir des parcelles cadastrales, de lancer ou suivre un calcul, de voir, explorer ou partager les résultats d'un projet (familles, indicateurs, carte, radar), ou de planifier des actions sylvicoles (éclaircie, plantation, martelage Marculus).
 ---
 
 # Vues nemeton dans Claude
@@ -30,7 +30,8 @@ Référence : `specs/BRIEF-visualisation-nemeton-claude.md`.
 | veut créer un projet, nomme une commune ou sa forêt | **Sélection** (`vues/selection/`) | `chercher_commune` → `parcelles_commune` → (vue) `creer_projet` |
 | veut voir, explorer ou partager les résultats d'un projet calculé | **Atlas** (`vues/atlas/`) | `vue_atlas`, `contexte_carto` (facultatif), `detail_indicateur` (depuis la vue) |
 | lance ou attend un calcul | **Calcul** (`vues/calcul/`) | `lancer_calcul`, `etat_calcul` (suivi depuis la vue), `annuler_calcul` |
-| veut un rapport, un GeoPackage | conversation | `generer_rapport`, `exporter_gpkg` (connecteur distant : lien `urls`) |
+| veut planifier, valider ou partager des actions sylvicoles | **Plan d'actions** (`vues/plan/`) | `plan_actions`, `ajouter_action`, `modifier_action`, `supprimer_action`, `profils_experts`, `exporter_marculus` |
+| veut un rapport, un GeoPackage | conversation | `generer_rapport` (pièce officielle, PDF), `exporter_gpkg` (connecteur distant : lien `urls`) |
 | veut éditer les unités de gestion | application nemetonshiny | `url_app` |
 
 ## Parcours « créer son premier projet »
@@ -90,10 +91,50 @@ Référence : `specs/BRIEF-visualisation-nemeton-claude.md`.
 3. Publier la vue Atlas avec :
    - `atlas.geojson` ← `fichier` de `vue_atlas`
    - `contexte.geojson` ← `fichier` de `contexte_carto` (si présent)
-   - Capacités : `{"mcp": {"servers": [{"server": <serveur nemeton>, "tools": ["detail_indicateur", "exporter_gpkg"]}]}, "sample": {}, "downloads": true}`.
+   - Capacités : `{"mcp": {"servers": [{"server": <serveur nemeton>, "tools": ["detail_indicateur", "exporter_gpkg", "profils_experts"]}]}, "sample": {}, "downloads": true}`.
 4. Résumer en deux ou trois phrases ce que montre l'Atlas (score global,
    familles les plus fortes et les plus faibles, valeurs manquantes) et donner
    le lien.
+
+## Parcours « Plan d'actions »
+
+Le plan est celui du projet nemeton, le même que dans nemetonshiny (avec son
+historique) : la vue le lit et l'écrit par le connecteur, il n'y a pas de
+seconde copie.
+
+1. `plan_actions(projet)` : écrit `plan.geojson` (les unités de gestion, avec
+   leurs scores de familles) et rend le plan. Écrire sa réponse telle quelle
+   dans le dossier de travail sous le nom `plan.json`.
+2. Facultatif : `contexte_carto(projet)` pour les routes et l'hydrographie.
+3. Publier la vue Plan avec `plan.json`, `plan.geojson` (← `fichier`) et
+   `contexte.geojson`, et les capacités
+   `{"mcp": {"servers": [{"server": <serveur nemeton>, "tools": ["plan_actions", "ajouter_action", "modifier_action", "supprimer_action", "profils_experts", "exporter_marculus"]}]}, "sample": {}, "downloads": true, "comments": {"composer_only": true}}`.
+4. La vue suit le plan (environ 30 s) : calendrier en vue simple ; tableau,
+   kanban des statuts, quantités et historique en vue experte (bascule
+   mémorisée par lecteur). Les rôles `gestionnaire` et `admin` modifient,
+   `lecteur` consulte et commente (commentaires claude.ai ancrés sur une
+   action).
+
+**Claude propose, une personne valide.** Une action suggérée par Claude,
+depuis la vue (bouton « Proposer des actions avec Claude ») ou dans la
+conversation, entre au plan en statut `proposee` avec
+`source = {origine: "claude", extrait_texte: <justification>}`. Elle
+s'affiche en ambre jusqu'à ce qu'une personne la valide (`validee`) ou
+l'écarte (`abandonnee`). Ne jamais valider, planifier ou réaliser une action
+à la place de l'utilisateur.
+
+Dans la conversation :
+- lire le plan avec `plan_actions(projet, geojson = false)` ;
+- passer les années civiles (`annee: 2030`), pas les décalages ;
+- pour modifier, passer `attendu = <version>` lue dans `plan_actions` :
+  l'erreur `nemetonclaude_conflit` signale que quelqu'un a modifié l'action
+  entre-temps et porte sa version actuelle dans `candidats` ;
+- préférer le statut `abandonnee` à `supprimer_action` pour garder la trace
+  au tableau.
+
+`exporter_marculus(projet)` produit le paquet terrain (un GeoPackage par
+action de martelage et le `.marsync`), à télécharger par le lien `urls` ;
+le plan ne change pas. Le retour du martelage s'importe dans nemetonshiny.
 
 ## Publier une vue
 
@@ -163,10 +204,20 @@ hachurée, raison tirée de `.<code>_status`.
 
 ## Profils experts
 
-Le profil (gestionnaire forestier, élu local, propriétaire, naturaliste) se
-choisit une fois par projet dans l'Atlas, à côté de « Demander à Claude ».
-Les profils YAML de nemetonshiny (`inst/experts/`) restent côté R pour le
-moment (question ouverte du brief).
+Les profils YAML de nemetonshiny (`inst/experts/`, plus les profils
+utilisateur) restent la seule source : `profils_experts(langue)` les sert
+(`cle`, `libelle`, `consigne`). L'Atlas et le Plan d'actions les proposent à
+côté de « Demander à Claude » et placent la consigne du profil choisi en tête
+de la demande. Dans la conversation, quand l'utilisateur annonce son point de
+vue (« profil élu local »), lire sa consigne avec `profils_experts` et s'y
+tenir.
+
+## Rapport
+
+Le PDF de `generer_rapport` reste la pièce officielle, signée et archivable.
+Pour le travail collectif (synthèse commentée, plan d'actions discuté),
+proposer en plus un document Claude, sans valeur officielle, qui renvoie au
+PDF.
 
 ## Erreurs du connecteur
 
@@ -179,7 +230,10 @@ Les outils rendent `{"ok": false, "erreur", "classe", "candidats"}` :
 | `nemetonshiny_parcelles_introuvables` | signaler les IDU manquants (copie incomplète, autre commune) |
 | `nemetonshiny_sans_indicateurs` | proposer `lancer_calcul` |
 | `nemetonshiny_projet_ancien` | le projet date d'avant nemetonshiny 1.0 : proposer de le recréer avec les mêmes parcelles |
-| `nemetonshiny_calcul_en_cours`, `nemetonshiny_projet_verrouille` | attendre, ou suivre `etat_calcul` |
+| `nemetonshiny_calcul_en_cours`, `nemetonshiny_projet_verrouille` | attendre, ou suivre `etat_calcul` ; pour le plan d'actions : le projet est ouvert dans nemetonshiny, réessayer quand il sera fermé |
+| `nemetonclaude_action_invalide` | relire le message (unité inconnue, type, année hors horizon) et corriger |
+| `nemetonclaude_conflit` | montrer à l'utilisateur la version actuelle (`candidats`) avant de réécrire |
+| `nemetonclaude_marculus_vide` | aucune action de martelage dans le plan : rien à exporter |
 
 Connecteur distant : un outil d'écriture refusé (« réservé aux rôles … ») vient
 du rôle Keycloak du compte, pas de nemeton ; le dire à l'utilisateur et

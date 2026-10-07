@@ -83,9 +83,64 @@ outils_mcp <- function() {
            ug = t("Management unit id (ug_id) or label."),
            code = t("Indicator code, e.g. 'B1', 'A5'."),
            langue = langue_arg),
-      lecture = TRUE)
+      lecture = TRUE),
+    .outil(plan_actions, "plan_actions",
+      "Action plan of a project (the one nemetonshiny edits): actions with calendar year (annee), unit label, status, priority, quantities, origin; recent history; allowed types, statuses, priorities and transitions; peut_ecrire for this account. Writes plan.geojson (management units with family scores) for the Plan view.",
+      list(projet = projet_arg, langue = langue_arg,
+           geojson = b("Also write plan.geojson (default true; false for a quick refresh).", required = FALSE),
+           historique = ellmer::type_integer("Number of recent history entries (default 300).", required = FALSE),
+           inclure_geojson = b("Also return the GeoJSON inline when under 2 MB (default false).", required = FALSE)),
+      lecture = TRUE),
+    .outil(ajouter_action, "ajouter_action",
+      "Add an action to a project's plan. Default status 'proposee': a suggestion by Claude must carry source = {origine: 'claude'} and stay 'proposee' until a person validates it. Unknown unit, type or out-of-horizon year: error nemetonclaude_action_invalide.",
+      list(projet = projet_arg, action = .type_action(required = TRUE))),
+    .outil(modifier_action, "modifier_action",
+      "Change fields of one action (status, year, priority, quantities, comment...). Pass attendu = the action's version as last read (plan_actions): if someone changed it since, nothing is written and the error nemetonclaude_conflit carries the current action.",
+      list(projet = projet_arg,
+           action_id = t("Action id (act_...)."),
+           modifications = .type_action(required = TRUE),
+           attendu = t("version of the action as last read (plan_actions).", required = FALSE))),
+    .outil(supprimer_action, "supprimer_action",
+      "Remove one action from a project's plan (kept in the plan's history). Prefer status 'abandonnee' to keep a trace on the board.",
+      list(projet = projet_arg, action_id = t("Action id (act_...)."))),
+    .outil(profils_experts, "profils_experts",
+      "Expert profiles (forest manager, local elected official, owner, naturalist...): key, label and the instructions that set the point of view of an answer.",
+      list(langue = langue_arg),
+      lecture = TRUE),
+    .outil(exporter_marculus, "exporter_marculus",
+      "Write the Marculus field bundle of a project (zip: one GeoPackage per marking action - thinning, clear-cut, respacing, observation - and the .marsync of their contexts) into its exports folder. The plan is not changed.",
+      list(projet = projet_arg))
   )
   c(existants, nouveaux)
+}
+
+# Schema d'une action du plan, pour ajouter_action et modifier_action : tous
+# les champs sont facultatifs dans une modification.
+.type_action <- function(required = TRUE) {
+  t <- ellmer::type_string
+  n <- ellmer::type_number
+  ellmer::type_object(
+    "Action fields (as in nemetonshiny's action plan).",
+    ug_id = t("Management unit id.", required = FALSE),
+    type = t("coupe_rase, eclaircie, depressage, plantation, regeneration, cloisonnement, desserte, observation, protection, entretien or autre.", required = FALSE),
+    type_libre = t("Free label when type is 'autre'.", required = FALSE),
+    intensite = t("e.g. faible, moderee, forte.", required = FALSE),
+    annee = ellmer::type_integer("Calendar year (e.g. 2028).", required = FALSE),
+    duree = ellmer::type_integer("Duration in years.", required = FALSE),
+    priorite = t("haute, moyenne or basse.", required = FALSE),
+    statut = t("proposee, validee, planifiee, realisee or abandonnee.", required = FALSE),
+    objectifs_lies = ellmer::type_array(t("Family code: C, B, W, A, F, L, T, R, S, P, E, N."), "Families the action serves.", required = FALSE),
+    quantite = ellmer::type_object("Quantities.",
+      volume_m3 = n("Volume (m3).", required = FALSE), surface_ha = n("Area (ha).", required = FALSE),
+      nb_tiges = ellmer::type_integer("Stems.", required = FALSE), rdi = n("RDI.", required = FALSE),
+      cout_eur = n("Cost (EUR).", required = FALSE), revenu_eur = n("Revenue (EUR).", required = FALSE),
+      .required = FALSE),
+    source = ellmer::type_object("Origin of the action.",
+      origine = t("'claude' for a suggestion by Claude, 'vue' when typed in a view.", required = FALSE),
+      extrait_texte = t("Short justification.", required = FALSE),
+      .required = FALSE),
+    commentaire = t("Short note.", required = FALSE),
+    .required = required)
 }
 
 #' Run the MCP server (stdio)

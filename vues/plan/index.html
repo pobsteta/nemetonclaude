@@ -1,0 +1,977 @@
+<title>Plan d'actions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&family=Spectral:wght@500;600&display=swap">
+<link rel="stylesheet" href="nemeton-view.css">
+<style>
+  /* Vue 3 : carte des UG | calendrier, tableau ou kanban | fiche d'action. */
+  :root { --pl-panneau: 520px; }
+  .pl { display: grid; min-height: 0; grid-template-columns: minmax(0, 1fr) var(--pl-panneau); position: relative; }
+  /* Le kanban a besoin de place pour ses cinq colonnes. */
+  .pl--large { grid-template-columns: minmax(280px, 1fr) min(860px, 64vw); }
+  .pl *, .pl *::before, .pl *::after { box-sizing: border-box; }
+  .pl__carte { position: relative; min-height: 0; }
+  .pl__carte .nv-carte { position: absolute; inset: 0; }
+  .pl__couleur {
+    position: absolute; z-index: 800; top: 10px; right: 12px;
+    background: var(--nv-surface); border: 1px solid var(--nv-trait); border-radius: var(--nv-r);
+    box-shadow: var(--nv-ombre); padding: 6px 8px; display: flex; align-items: center; gap: 8px; font-size: 13px;
+  }
+  .pl__couleur select { font: inherit; }
+  .pl__legende-liste { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 2px; }
+  .pl__legende-liste li { display: flex; align-items: center; gap: 6px; }
+  .pl__pastille { width: 14px; height: 10px; border-radius: 2px; flex: none; border: 1px solid rgba(0,0,0,.15); }
+
+  .pl__panneau {
+    min-height: 0; overflow: auto; background: var(--nv-surface); border-left: 1px solid var(--nv-trait);
+    display: flex; flex-direction: column;
+  }
+  .pl__barre {
+    position: sticky; top: 0; z-index: 3; background: var(--nv-surface);
+    border-bottom: 1px solid var(--nv-trait); padding: 10px var(--nv-gouttiere) 0;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .pl__ligne { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .pl__filtre {
+    display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; border-radius: 999px;
+    background: var(--nv-action-voile); color: var(--nv-action-encre); font-weight: 700; font-size: 13px;
+  }
+  .pl__filtre button { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 15px; width: 24px; height: 24px; border-radius: 50%; }
+  .pl__filtre button:hover { background: var(--nv-surface); }
+  .pl__onglets { display: flex; margin: 0 calc(-1 * var(--nv-gouttiere)); }
+  .pl__onglets button {
+    flex: 1; padding: 9px 8px; border: 0; border-bottom: 2px solid transparent; background: transparent;
+    font: 700 13px var(--nv-police-texte); color: var(--nv-encre-2); cursor: pointer;
+  }
+  .pl__onglets button[aria-selected="true"] { color: var(--nv-encre); border-bottom-color: var(--nv-action); }
+  .pl__contenu { padding: 12px var(--nv-gouttiere) 18px; display: flex; flex-direction: column; gap: 14px; }
+
+  /* Calendrier */
+  .pl__annee h3 { font: 600 17px var(--nv-police-titre); margin: 0 0 6px; display: flex; gap: 8px; align-items: baseline; }
+  .pl__annee h3 small { font: 400 12px var(--nv-police-texte); color: var(--nv-encre-2); }
+  .pl__liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .pl__action {
+    width: 100%; text-align: left; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px;
+    padding: 8px 10px; border: 1px solid var(--nv-trait); border-left: 4px solid var(--pl-couleur, var(--nv-trait));
+    border-radius: var(--nv-r); background: var(--nv-surface); color: var(--nv-encre); cursor: pointer; font: inherit;
+  }
+  .pl__action:hover { background: var(--nv-surface-2); }
+  .pl__action[aria-current="true"] { outline: 2px solid var(--nv-action-encre); outline-offset: 1px; }
+  .pl__action--claude { background: var(--nv-ia-voile); border-color: var(--nv-ia); border-left-color: var(--nv-ia); }
+  .pl__action-titre { font-weight: 700; overflow-wrap: anywhere; }
+  .pl__action-sous { grid-column: 1; font-size: 13px; color: var(--nv-encre-2); overflow-wrap: anywhere; }
+  .pl__statut {
+    grid-row: 1 / 3; grid-column: 2; align-self: center; font-size: 12px; font-weight: 700;
+    padding: 2px 8px; border-radius: 999px; background: var(--nv-surface-2); white-space: nowrap;
+  }
+  .pl__statut[data-statut="validee"] { background: #dbe9f6; color: #1d4f7a; }
+  .pl__statut[data-statut="planifiee"] { background: var(--nv-action-voile); color: var(--nv-action-encre); }
+  .pl__statut[data-statut="realisee"] { background: var(--nv-action); color: var(--nv-action-texte); }
+  .pl__statut[data-statut="abandonnee"] { text-decoration: line-through; color: var(--nv-encre-3); }
+  .pl__vide { color: var(--nv-encre-2); font-size: 14px; margin: 0; }
+  #message:empty { display: none; }
+
+  /* Tableau */
+  .pl__table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .pl__table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--nv-encre-3); padding: 6px 6px; border-bottom: 1px solid var(--nv-trait); position: sticky; top: 0; background: var(--nv-surface); }
+  .pl__table th button { all: unset; cursor: pointer; }
+  .pl__table td { padding: 6px; border-bottom: 1px solid var(--nv-trait); vertical-align: top; }
+  .pl__table tr { cursor: pointer; }
+  .pl__table tbody tr:hover { background: var(--nv-surface-2); }
+  .pl__table tr[aria-current="true"] { background: var(--nv-action-voile); }
+  .pl__table .nv-num { text-align: right; white-space: nowrap; }
+  .pl__defile { overflow-x: auto; }
+
+  /* Kanban */
+  .pl__kanban { display: grid; grid-template-columns: repeat(5, minmax(140px, 1fr)); gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+  .pl__colonne { background: var(--nv-surface-2); border-radius: var(--nv-r); padding: 8px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .pl__colonne h3 { font: 700 12px var(--nv-police-texte); text-transform: uppercase; letter-spacing: .06em; color: var(--nv-encre-2); margin: 0; display: flex; justify-content: space-between; }
+  .pl__carte-k { background: var(--nv-surface); border: 1px solid var(--nv-trait); border-radius: var(--nv-r); padding: 7px 8px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+  .pl__carte-k--claude { border-color: var(--nv-ia); background: var(--nv-ia-voile); }
+  .pl__carte-k > button.pl__ouvrir { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+  .pl__carte-k > button.pl__ouvrir:focus-visible { outline: 2px solid var(--nv-action-encre); }
+  .pl__transitions { display: flex; flex-wrap: wrap; gap: 4px; }
+  .pl__transitions button { font: 700 11px var(--nv-police-texte); padding: 3px 6px; border-radius: 4px; border: 1px solid var(--nv-trait); background: var(--nv-surface); color: var(--nv-encre); cursor: pointer; }
+  .pl__transitions button:hover { border-color: var(--nv-action-encre); }
+
+  /* Fiche */
+  .pl__fiche {
+    position: absolute; z-index: 1100; top: 0; right: 0; bottom: 0; width: min(var(--pl-panneau), 100%);
+    background: var(--nv-surface); border-left: 1px solid var(--nv-trait); box-shadow: var(--nv-ombre);
+    overflow: auto; padding: 14px var(--nv-gouttiere) 20px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .pl__fiche-tete { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .pl__fiche-tete h2 { font-size: 20px; overflow-wrap: anywhere; }
+  .pl__fermer { border: 0; background: transparent; font-size: 22px; line-height: 1; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; color: var(--nv-encre-2); flex: none; }
+  .pl__fermer:hover { background: var(--nv-surface-2); }
+  .pl__form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+  .pl__form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 700; color: var(--nv-encre-2); min-width: 0; }
+  .pl__form label.pl__large { grid-column: 1 / -1; }
+  .pl__form input, .pl__form select, .pl__form textarea {
+    font: 15px var(--nv-police-texte); color: var(--nv-encre); background: var(--nv-surface);
+    border: 1px solid var(--nv-trait); border-radius: var(--nv-r); padding: 7px 8px; width: 100%; min-width: 0;
+  }
+  .pl__form textarea { min-height: 70px; resize: vertical; }
+  .pl__form :disabled { background: var(--nv-surface-2); color: var(--nv-encre-2); }
+  .pl__familles { grid-column: 1 / -1; border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .pl__familles legend { font-size: 12px; font-weight: 700; color: var(--nv-encre-2); margin-bottom: 4px; padding: 0; }
+  .pl__familles label { flex-direction: row; align-items: center; gap: 4px; font-weight: 400; font-size: 13px; color: var(--nv-encre); border: 1px solid var(--nv-trait); border-radius: 999px; padding: 2px 9px 2px 6px; }
+  .pl__familles input { width: auto; }
+  .pl__actions-fiche { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pl__danger { color: var(--nv-alerte); border-color: var(--nv-alerte); }
+  .pl__confirmer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; }
+  .pl__historique { list-style: none; margin: 0; padding: 0; font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
+  .pl__historique li { border-left: 2px solid var(--nv-trait); padding-left: 8px; overflow-wrap: anywhere; }
+  .pl__historique time { color: var(--nv-encre-2); font-family: var(--nv-police-chiffres); font-size: 12px; }
+  .pl__lecture { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 14px; margin: 0; }
+  .pl__lecture dt { color: var(--nv-encre-2); }
+  .pl__lecture dd { margin: 0; overflow-wrap: anywhere; }
+
+  /* UG et propositions */
+  .pl__ug { border: 1px solid var(--nv-trait); border-radius: var(--nv-r); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .pl__ug h3 { font-size: 17px; }
+  .pl__scores { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 4px 12px; font-size: 12px; }
+  .pl__scores span { display: flex; justify-content: space-between; gap: 6px; }
+  .pl__suggestion { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; border-top: 1px dashed var(--nv-ia); }
+  .pl__suggestion:first-of-type { border-top: 0; }
+  .pl__exemple { font-size: 12px; color: var(--nv-encre-2); border: 1px dashed var(--nv-trait); border-radius: var(--nv-r); padding: 3px 8px; }
+  .pl__resume { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; }
+  .pl__resume .nv-chiffre { font-size: 18px; display: block; line-height: 1.1; }
+
+  @media (max-width: 1100px) { :root { --pl-panneau: 440px; } }
+  @media (max-width: 860px) {
+    .nv-app { height: auto; min-height: 100%; }
+    .pl, .pl--large { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(300px, 45vh) auto; }
+    .pl__panneau { border-left: 0; border-top: 1px solid var(--nv-trait); overflow: visible; }
+    .pl__fiche { position: fixed; top: auto; left: 0; right: 0; bottom: 0; width: 100%; max-height: 85vh; border-left: 0; border-top: 1px solid var(--nv-trait); border-radius: 12px 12px 0 0; }
+    .pl__form { grid-template-columns: 1fr; }
+    .pl__couleur { left: 12px; right: auto; top: auto; bottom: 12px; }
+  }
+</style>
+
+<div class="nv-app">
+  <header class="nv-entete">
+    <div class="nv-entete__titre">
+      <span class="nv-etiquette" data-t="surtitre">Plan d'actions</span>
+      <h1 id="titre">—</h1>
+    </div>
+    <div class="pl__resume" id="resume"></div>
+    <div class="nv-entete__outils" style="flex-wrap:wrap">
+      <span class="pl__exemple" id="bandeau-exemple" hidden data-t="exemple">Données fictives</span>
+      <button class="nv-bouton" type="button" id="btn-csv" hidden data-t="csv">CSV</button>
+      <button class="nv-bouton" type="button" id="btn-marculus" hidden data-t="marculus">Paquet Marculus</button>
+      <div class="nv-bascule" role="group" data-t-title="niveau">
+        <button type="button" id="mode-simple" aria-pressed="true" data-t="simple">Vue simple</button>
+        <button type="button" id="mode-expert" aria-pressed="false" data-t="experte">Vue experte</button>
+      </div>
+      <div class="nv-bascule" role="group" aria-label="Langue / Language">
+        <button type="button" id="lang-fr" aria-pressed="true">FR</button>
+        <button type="button" id="lang-en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="pl">
+    <section class="pl__carte" aria-labelledby="titre-carte">
+      <h2 id="titre-carte" class="nv-sr" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)" data-t="carte">Carte des unités de gestion</h2>
+      <div class="nv-carte" id="carte"></div>
+      <div class="pl__couleur">
+        <label for="couleur" data-t="colorer">Couleur</label>
+        <select id="couleur" class="nv-champ" style="padding:4px 6px">
+          <option value="annee" data-t="c_annee">Prochaine action</option>
+          <option value="type" data-t="c_type">Type</option>
+          <option value="priorite" data-t="c_priorite">Priorité</option>
+          <option value="statut" data-t="c_statut">Statut</option>
+        </select>
+      </div>
+      <div class="nv-legende" id="legende"></div>
+    </section>
+
+    <section class="pl__panneau" aria-label="Actions">
+      <div class="pl__barre">
+        <div class="pl__ligne">
+          <span class="pl__filtre" id="filtre-ug" hidden><span id="filtre-ug-texte"></span><button type="button" id="btn-sans-filtre" data-t-title="tout_afficher">×</button></span>
+          <button class="nv-bouton nv-bouton--action" type="button" id="btn-nouvelle" hidden data-t="nouvelle">Nouvelle action</button>
+        </div>
+        <div class="pl__onglets" role="tablist" id="onglets">
+          <button type="button" role="tab" id="onglet-calendrier" aria-selected="true" aria-controls="vue-calendrier" data-t="calendrier">Calendrier</button>
+          <button type="button" role="tab" id="onglet-tableau" aria-selected="false" aria-controls="vue-tableau" data-t="tableau">Tableau</button>
+          <button type="button" role="tab" id="onglet-kanban" aria-selected="false" aria-controls="vue-kanban" data-t="kanban">Kanban</button>
+        </div>
+      </div>
+      <div class="pl__contenu">
+        <p class="nv-statut" id="message" role="status" aria-live="polite"></p>
+        <section class="pl__ug" id="bloc-ug" hidden aria-live="polite"></section>
+        <div id="vue-calendrier" role="tabpanel" aria-labelledby="onglet-calendrier"></div>
+        <div id="vue-tableau" role="tabpanel" aria-labelledby="onglet-tableau" hidden></div>
+        <div id="vue-kanban" role="tabpanel" aria-labelledby="onglet-kanban" hidden></div>
+      </div>
+    </section>
+
+    <aside class="pl__fiche" id="fiche" hidden role="dialog" aria-modal="false" aria-labelledby="fiche-titre"></aside>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="nemeton-view.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var E = NV.echapper;
+
+  var FAMILLES = [
+    ["C", "famille_carbone", "Carbone", "Carbon"], ["B", "famille_biodiversite", "Biodiversité", "Biodiversity"],
+    ["W", "famille_eau", "Eau", "Water"], ["A", "famille_air", "Air", "Air"], ["F", "famille_sol", "Sol", "Soil"],
+    ["L", "famille_paysage", "Paysage", "Landscape"], ["T", "famille_temporel", "Temporel", "Time"],
+    ["R", "famille_risque", "Risques", "Risks"], ["S", "famille_social", "Social", "Social"],
+    ["P", "famille_production", "Production", "Production"], ["E", "famille_energie", "Énergie", "Energy"],
+    ["N", "famille_naturalite", "Naturalité", "Naturalness"]
+  ];
+  var nomFamille = function (code) {
+    var f = FAMILLES.filter(function (x) { return x[0] === code; })[0];
+    return f ? (NV.lang === "en" ? f[3] : f[2]) : code;
+  };
+
+  NV.textes({
+    fr: {
+      surtitre: "Plan d'actions", exemple: "Données fictives", csv: "CSV", marculus: "Paquet Marculus",
+      niveau: "Niveau de détail", simple: "Vue simple", experte: "Vue experte", carte: "Carte des unités de gestion",
+      colorer: "Couleur", c_annee: "Prochaine action", c_type: "Type", c_priorite: "Priorité", c_statut: "Statut",
+      tout_afficher: "Afficher toutes les unités", nouvelle: "Nouvelle action", calendrier: "Calendrier",
+      tableau: "Tableau", kanban: "Kanban", ug_filtre: "Unité {ug}",
+      t_coupe_rase: "Coupe rase", t_eclaircie: "Éclaircie", t_depressage: "Dépressage", t_plantation: "Plantation",
+      t_regeneration: "Régénération", t_cloisonnement: "Cloisonnement", t_desserte: "Desserte",
+      t_observation: "Observation", t_protection: "Protection", t_entretien: "Entretien", t_autre: "Autre",
+      s_proposee: "Proposée", s_validee: "Validée", s_planifiee: "Planifiée", s_realisee: "Réalisée", s_abandonnee: "Abandonnée",
+      p_haute: "Haute", p_moyenne: "Moyenne", p_basse: "Basse",
+      priorite_x: "priorité {p}", sans_annee: "Sans année", n_actions: "{n} action(s)",
+      aucune: "Aucune action pour l'instant.", aucune_ug: "Aucune action sur cette unité.",
+      r_actions: "Actions", r_a_valider: "À valider", r_cout: "Coût", r_revenu: "Revenu",
+      col_annee: "Année", col_ug: "Unité", col_type: "Type", col_intensite: "Intensité", col_priorite: "Priorité",
+      col_statut: "Statut", col_volume: "Volume m³", col_cout: "Coût €", col_revenu: "Revenu €",
+      vers: "→ {s}", valider: "Valider", ecarter: "Écarter",
+      f_ug: "Unité de gestion", f_type: "Type", f_type_libre: "Préciser", f_intensite: "Intensité", f_annee: "Année",
+      f_duree: "Durée (ans)", f_priorite: "Priorité", f_statut: "Statut", f_objectifs: "Familles servies",
+      f_volume: "Volume (m³)", f_surface: "Surface (ha)", f_tiges: "Tiges", f_rdi: "RDI", f_cout: "Coût (€)",
+      f_revenu: "Revenu (€)", f_commentaire: "Commentaire", i_faible: "Faible", i_moderee: "Modérée", i_forte: "Forte", i_aucune: "—",
+      enregistrer: "Enregistrer", creer: "Ajouter au plan", supprimer: "Supprimer", commenter: "Commenter",
+      fermer: "Fermer", confirmer_suppr: "Supprimer cette action ? Elle restera dans l'historique.",
+      oui_suppr: "Oui, supprimer", non: "Non", historique: "Historique", h_create: "créée", h_delete: "supprimée",
+      h_update: "{champ} : {ancien} → {nouveau}", par: "par {qui}", derniere_modif: "Dernière modification par", propose_claude: "Proposée par Claude — à valider par une personne",
+      origine_claude: "Proposition de Claude", nouvelle_titre: "Nouvelle action",
+      lecture_seule: "Lecture seule : la modification du plan demande un rôle gestionnaire ou admin, et le connecteur nemeton.",
+      enregistre: "Action enregistrée.", ajoute: "Action ajoutée au plan.", supprime: "Action supprimée.",
+      conflit: "{message} Voici sa version actuelle : vérifiez avant d'enregistrer à nouveau.",
+      envoi: "Envoi…", rien_change: "Rien n'a changé.",
+      surface: "{ha}", familles_ug: "Scores des familles", commentaire_ug: "Note sur l'unité",
+      demander: "Proposer des actions avec Claude", profil: "Point de vue", reflexion: "Claude prépare des propositions…",
+      suggestions: "Propositions de Claude", suggestion_ajout: "Ajouter comme proposée", aucune_suggestion: "Claude n'a rien proposé d'utilisable.",
+      ignorees: "{n} proposition(s) hors des règles du plan écartée(s).", erreur_ia: "Claude n'a pas pu répondre : {message}",
+      justification: "Pourquoi : {texte}", genere_ia: "Généré par IA · à vérifier",
+      marculus_cours: "Préparation du paquet Marculus…", marculus_ok: "Paquet prêt : {n} chantier(s).",
+      marculus_lien: "Télécharger le paquet (lien valable une heure)", marculus_fichier: "Fichier sur le serveur : {f}",
+      csv_ok: "CSV enregistré.", csv_refus: "Enregistrement annulé.", maj: "Mis à jour à {h}",
+      erreur_donnees: "Impossible de lire les données de la vue : {message}", legende_aucune: "Aucune action active"
+    },
+    en: {
+      surtitre: "Action plan", exemple: "Fictitious data", csv: "CSV", marculus: "Marculus bundle",
+      niveau: "Level of detail", simple: "Simple view", experte: "Expert view", carte: "Map of management units",
+      colorer: "Colour", c_annee: "Next action", c_type: "Type", c_priorite: "Priority", c_statut: "Status",
+      tout_afficher: "Show all units", nouvelle: "New action", calendrier: "Calendar",
+      tableau: "Table", kanban: "Board", ug_filtre: "Unit {ug}",
+      t_coupe_rase: "Clear-cut", t_eclaircie: "Thinning", t_depressage: "Respacing", t_plantation: "Planting",
+      t_regeneration: "Regeneration", t_cloisonnement: "Skid trails", t_desserte: "Forest roads",
+      t_observation: "Observation", t_protection: "Protection", t_entretien: "Maintenance", t_autre: "Other",
+      s_proposee: "Proposed", s_validee: "Validated", s_planifiee: "Scheduled", s_realisee: "Done", s_abandonnee: "Dropped",
+      p_haute: "High", p_moyenne: "Medium", p_basse: "Low",
+      priorite_x: "{p} priority", sans_annee: "No year", n_actions: "{n} action(s)",
+      aucune: "No action yet.", aucune_ug: "No action on this unit.",
+      r_actions: "Actions", r_a_valider: "To validate", r_cout: "Cost", r_revenu: "Revenue",
+      col_annee: "Year", col_ug: "Unit", col_type: "Type", col_intensite: "Intensity", col_priorite: "Priority",
+      col_statut: "Status", col_volume: "Volume m³", col_cout: "Cost €", col_revenu: "Revenue €",
+      vers: "→ {s}", valider: "Validate", ecarter: "Dismiss",
+      f_ug: "Management unit", f_type: "Type", f_type_libre: "Specify", f_intensite: "Intensity", f_annee: "Year",
+      f_duree: "Duration (years)", f_priorite: "Priority", f_statut: "Status", f_objectifs: "Families served",
+      f_volume: "Volume (m³)", f_surface: "Area (ha)", f_tiges: "Stems", f_rdi: "RDI", f_cout: "Cost (€)",
+      f_revenu: "Revenue (€)", f_commentaire: "Comment", i_faible: "Light", i_moderee: "Moderate", i_forte: "Heavy", i_aucune: "—",
+      enregistrer: "Save", creer: "Add to the plan", supprimer: "Delete", commenter: "Comment",
+      fermer: "Close", confirmer_suppr: "Delete this action? It stays in the history.",
+      oui_suppr: "Yes, delete", non: "No", historique: "History", h_create: "created", h_delete: "deleted",
+      h_update: "{champ}: {ancien} → {nouveau}", par: "by {qui}", derniere_modif: "Last changed by", propose_claude: "Proposed by Claude — to be validated by a person",
+      origine_claude: "Suggested by Claude", nouvelle_titre: "New action",
+      lecture_seule: "Read only: changing the plan needs a manager or admin role, and the nemeton connector.",
+      enregistre: "Action saved.", ajoute: "Action added to the plan.", supprime: "Action deleted.",
+      conflit: "{message} Here is its current version: check it before saving again.",
+      envoi: "Sending…", rien_change: "Nothing changed.",
+      surface: "{ha}", familles_ug: "Family scores", commentaire_ug: "Note on the unit",
+      demander: "Suggest actions with Claude", profil: "Point of view", reflexion: "Claude is preparing suggestions…",
+      suggestions: "Claude's suggestions", suggestion_ajout: "Add as proposed", aucune_suggestion: "Claude suggested nothing usable.",
+      ignorees: "{n} suggestion(s) outside the plan's rules dismissed.", erreur_ia: "Claude could not answer: {message}",
+      justification: "Why: {texte}", genere_ia: "AI-generated · to be checked",
+      marculus_cours: "Preparing the Marculus bundle…", marculus_ok: "Bundle ready: {n} work site(s).",
+      marculus_lien: "Download the bundle (link valid one hour)", marculus_fichier: "File on the server: {f}",
+      csv_ok: "CSV saved.", csv_refus: "Save cancelled.", maj: "Updated at {h}",
+      erreur_donnees: "Cannot read the view's data: {message}", legende_aucune: "No active action"
+    }
+  });
+
+  var COULEURS_TYPE = { coupe_rase: "#e15759", eclaircie: "#4e79a7", depressage: "#76b7b2", plantation: "#59a14f",
+    regeneration: "#8cd17d", cloisonnement: "#9c755f", desserte: "#bab0ac", observation: "#b07aa1",
+    protection: "#ff9da7", entretien: "#86bcb6", autre: "#79706e" };
+  var COULEURS_PRIORITE = { haute: "#a50f15", moyenne: "#de6a3d", basse: "#fcbba1" };
+  var COULEURS_STATUT = { proposee: "#9ecae1", validee: "#3182bd", planifiee: "#31a354", realisee: "#006d2c", abandonnee: "#bdbdbd" };
+  var ACTIFS = { proposee: true, validee: true, planifiee: true };
+
+  var etat = {
+    meta: null, plan: null, ugs: new Map(), couches: new Map(), ug: null, action: null, nouvelle: false,
+    mode: NV.stockage.lire("nemeton-plan-mode", "simple"), onglet: "calendrier", couleur: "annee",
+    tri: { col: "annee", sens: 1 }, suggestions: [], profils: [], recuA: null
+  };
+  var mcp = null, sample = null, downloads = null, comments = null, arreter = null, demande = null;
+
+  var t = NV.t;
+  var lib = function (prefixe, v) { var k = prefixe + v; var s = t(k); return s === k ? (v || "—") : s; };
+  var actions = function () { return (etat.plan && etat.plan.actions) || []; };
+  var catalogue = function () { return (etat.plan && etat.plan.catalogue) || {}; };
+  var expert = function () { return etat.mode === "expert"; };
+  var peutEcrire = function () { return !!mcp && !!etat.plan && etat.plan.peut_ecrire !== false && !(etat.meta && etat.meta.exemple); };
+  var labelUG = function (id) { var u = etat.ugs.get(id); return (u && u.label) || id || "—"; };
+  var titreAction = function (a) {
+    var type = a.type === "autre" && a.type_libre ? a.type_libre : lib("t_", a.type);
+    return a.intensite && expert() === false && a.intensite !== "null" ? type + " " + lib("i_", a.intensite).toLowerCase() : type;
+  };
+  function signaler(texte, duree) { NV.annoncer($("message"), texte || "", duree == null ? 0 : duree); }
+
+  /* ---------------------------------------------- carte */
+  var carte = NV.carte("carte", { zoomControl: true });
+  var groupe = L.featureGroup().addTo(carte);
+
+  function actionsUG(id) { return actions().filter(function (a) { return a.ug_id === id; }); }
+  function prochaine(id) {
+    return actionsUG(id).filter(function (a) { return ACTIFS[a.statut] && a.annee != null; })
+      .sort(function (x, y) { return x.annee - y.annee || ordrePriorite(x) - ordrePriorite(y); })[0] || null;
+  }
+  function ordrePriorite(a) { return { haute: 0, moyenne: 1, basse: 2 }[a.priorite] == null ? 3 : { haute: 0, moyenne: 1, basse: 2 }[a.priorite]; }
+  function couleurUG(id) {
+    var a = prochaine(id);
+    if (!a) return null;
+    if (etat.couleur === "type") return COULEURS_TYPE[a.type] || COULEURS_TYPE.autre;
+    if (etat.couleur === "priorite") return COULEURS_PRIORITE[a.priorite] || null;
+    if (etat.couleur === "statut") return COULEURS_STATUT[a.statut] || null;
+    var base = etat.plan.annee_base || new Date().getFullYear(), h = etat.plan.horizon_annees || 20;
+    return NV.couleurScore(100 - Math.max(0, Math.min(100, ((a.annee - base) / h) * 100)), "viridis");
+  }
+  function styleUG(id) {
+    var c = couleurUG(id), choisie = etat.ug === id;
+    return { color: choisie ? NV.css("--nv-action-encre") : NV.css("--nv-commune"), weight: choisie ? 3 : 0.8,
+      fillColor: c || NV.css("--nv-surface-2"), fillOpacity: c ? 0.78 : 0.45 };
+  }
+  function recolorer() { etat.couches.forEach(function (couche, id) { couche.setStyle(styleUG(id)); }); rendreLegende(); }
+  function rendreLegende() {
+    var el = $("legende"), html = "<strong>" + E(t("c_" + etat.couleur)) + "</strong>";
+    if (etat.couleur === "annee") {
+      var base = (etat.plan && etat.plan.annee_base) || new Date().getFullYear(), h = (etat.plan && etat.plan.horizon_annees) || 20;
+      html += "<div class='nv-degrade' style='margin-top:4px;background:linear-gradient(90deg," + NV.palettes.viridis.slice().reverse().join(",") + ")'></div>" +
+        "<div class='nv-legende__echelle'><span>" + (base + 1) + "</span><span>" + (base + h) + "</span></div>";
+    } else {
+      var table = etat.couleur === "type" ? COULEURS_TYPE : etat.couleur === "priorite" ? COULEURS_PRIORITE : COULEURS_STATUT;
+      var pre = etat.couleur === "type" ? "t_" : etat.couleur === "priorite" ? "p_" : "s_";
+      var presents = {};
+      etat.couches.forEach(function (c, id) { var a = prochaine(id); if (a) presents[a[etat.couleur]] = true; });
+      html += "<ul class='pl__legende-liste'>" + Object.keys(table).filter(function (k) { return presents[k]; }).map(function (k) {
+        return "<li><span class='pl__pastille' style='background:" + table[k] + "'></span>" + E(lib(pre, k)) + "</li>";
+      }).join("") + "</ul>";
+    }
+    html += "<div style='margin-top:4px' class='nv-muet'><span class='pl__pastille' style='display:inline-block;vertical-align:-1px;background:" + NV.css("--nv-surface-2") + "'></span> " + E(t("legende_aucune")) + "</div>";
+    el.innerHTML = html;
+  }
+  function choisirUG(id, centrer) {
+    etat.ug = etat.ug === id && !centrer ? null : id;
+    recolorer();
+    if (etat.ug && centrer && etat.couches.get(etat.ug)) carte.fitBounds(etat.couches.get(etat.ug).getBounds(), { maxZoom: 16, padding: [30, 30] });
+    rendreListes(); rendreUG();
+  }
+
+  /* ---------------------------------------------- en-tête */
+  function rendreResume() {
+    var as = actions(), actives = as.filter(function (a) { return a.statut !== "abandonnee"; });
+    var aValider = as.filter(function (a) { return a.statut === "proposee"; }).length;
+    var bloc = function (cle, v) { return "<div><span class='nv-etiquette'>" + E(t(cle)) + "</span><span class='nv-chiffre'>" + v + "</span></div>"; };
+    var html = bloc("r_actions", NV.nombre(actives.length)) + bloc("r_a_valider", NV.nombre(aValider));
+    if (expert()) {
+      var somme = function (k) { return actives.reduce(function (s, a) { return s + (Number(a.quantite && a.quantite[k]) || 0); }, 0); };
+      html += bloc("r_cout", NV.nombre(somme("cout_eur")) + " €") + bloc("r_revenu", NV.nombre(somme("revenu_eur")) + " €");
+    }
+    $("resume").innerHTML = html;
+  }
+
+  /* ---------------------------------------------- listes */
+  function visibles() {
+    return actions().filter(function (a) { return !etat.ug || a.ug_id === etat.ug; });
+  }
+  function carteAction(a) {
+    var claude = a.propose_par_claude && a.statut === "proposee";
+    var sous = [labelUG(a.ug_id), t("priorite_x", { p: lib("p_", a.priorite).toLowerCase() })];
+    if (expert() && a.quantite && a.quantite.volume_m3) sous.push(NV.nombre(a.quantite.volume_m3) + " m³");
+    return "<button type='button' class='pl__action" + (claude ? " pl__action--claude" : "") + "' data-action='" + E(a.id) + "'" +
+      (etat.action && etat.action.id === a.id ? " aria-current='true'" : "") +
+      " style='--pl-couleur:" + (COULEURS_TYPE[a.type] || COULEURS_TYPE.autre) + "'>" +
+      "<span class='pl__action-titre'>" + E(titreAction(a)) + "</span>" +
+      "<span class='pl__statut' data-statut='" + E(a.statut) + "'>" + E(lib("s_", a.statut)) + "</span>" +
+      "<span class='pl__action-sous'>" + E(sous.join(" · ")) + (claude ? " · <span style='color:var(--nv-ia-encre);font-weight:700'>" + E(t("origine_claude")) + "</span>" : "") + "</span></button>";
+  }
+  function rendreCalendrier() {
+    var as = visibles().slice().sort(function (x, y) { return (x.annee || 9999) - (y.annee || 9999) || ordrePriorite(x) - ordrePriorite(y); });
+    if (!as.length) { $("vue-calendrier").innerHTML = "<p class='pl__vide'>" + E(t(etat.ug ? "aucune_ug" : "aucune")) + "</p>"; return; }
+    var parAnnee = new Map();
+    as.forEach(function (a) { var k = a.annee || 0; if (!parAnnee.has(k)) parAnnee.set(k, []); parAnnee.get(k).push(a); });
+    var html = "";
+    parAnnee.forEach(function (liste, annee) {
+      html += "<section class='pl__annee'><h3>" + (annee ? annee : E(t("sans_annee"))) + " <small>" + E(t("n_actions", { n: liste.length })) + "</small></h3>" +
+        "<ul class='pl__liste'>" + liste.map(function (a) { return "<li>" + carteAction(a) + "</li>"; }).join("") + "</ul></section>";
+    });
+    $("vue-calendrier").innerHTML = html;
+  }
+  var COLONNES = [["annee", "col_annee"], ["ug", "col_ug"], ["type", "col_type"], ["intensite", "col_intensite"], ["priorite", "col_priorite"],
+    ["statut", "col_statut"], ["volume", "col_volume", true], ["cout", "col_cout", true], ["revenu", "col_revenu", true]];
+  function valeurCol(a, col) {
+    if (col === "ug") return labelUG(a.ug_id);
+    if (col === "volume") return a.quantite && a.quantite.volume_m3;
+    if (col === "cout") return a.quantite && a.quantite.cout_eur;
+    if (col === "revenu") return a.quantite && a.quantite.revenu_eur;
+    if (col === "priorite") return ordrePriorite(a);
+    return a[col];
+  }
+  function rendreTableau() {
+    var as = visibles().slice(), tri = etat.tri;
+    as.sort(function (x, y) {
+      var a = valeurCol(x, tri.col), b = valeurCol(y, tri.col);
+      if (a == null) return 1; if (b == null) return -1;
+      return (a > b ? 1 : a < b ? -1 : 0) * tri.sens;
+    });
+    var html = "<div class='pl__defile'><table class='pl__table'><thead><tr>" + COLONNES.map(function (c) {
+      var actif = tri.col === c[0];
+      return "<th scope='col'" + (actif ? " aria-sort='" + (tri.sens > 0 ? "ascending" : "descending") + "'" : "") + "><button type='button' data-tri='" + c[0] + "'>" + E(t(c[1])) + (actif ? (tri.sens > 0 ? " ▲" : " ▼") : "") + "</button></th>";
+    }).join("") + "</tr></thead><tbody>";
+    html += as.map(function (a) {
+      var q = a.quantite || {};
+      return "<tr data-action='" + E(a.id) + "' tabindex='0'" + (etat.action && etat.action.id === a.id ? " aria-current='true'" : "") + ">" +
+        "<td class='nv-num'>" + (a.annee || "—") + "</td><td>" + E(labelUG(a.ug_id)) + "</td><td>" + E(a.type === "autre" && a.type_libre ? a.type_libre : lib("t_", a.type)) +
+        (a.propose_par_claude && a.statut === "proposee" ? " <span title='" + E(t("origine_claude")) + "' style='color:var(--nv-ia)'>●</span>" : "") + "</td><td>" + E(a.intensite ? lib("i_", a.intensite) : "—") + "</td>" +
+        "<td>" + E(lib("p_", a.priorite)) + "</td><td><span class='pl__statut' data-statut='" + E(a.statut) + "'>" + E(lib("s_", a.statut)) + "</span></td>" +
+        "<td class='nv-num'>" + NV.nombre(q.volume_m3) + "</td><td class='nv-num'>" + NV.nombre(q.cout_eur) + "</td><td class='nv-num'>" + NV.nombre(q.revenu_eur) + "</td></tr>";
+    }).join("") + "</tbody></table></div>";
+    if (!as.length) html = "<p class='pl__vide'>" + E(t(etat.ug ? "aucune_ug" : "aucune")) + "</p>";
+    $("vue-tableau").innerHTML = html;
+  }
+  function boutonsTransition(a) {
+    if (!peutEcrire()) return "";
+    var suivants = (catalogue().transitions || {})[a.statut] || [];
+    if (a.propose_par_claude && a.statut === "proposee") {
+      return "<div class='pl__transitions'><button type='button' data-transition='validee' data-id='" + E(a.id) + "'>" + E(t("valider")) + "</button>" +
+        "<button type='button' data-transition='abandonnee' data-id='" + E(a.id) + "'>" + E(t("ecarter")) + "</button></div>";
+    }
+    if (!suivants.length) return "";
+    return "<div class='pl__transitions'>" + suivants.map(function (s) {
+      return "<button type='button' data-transition='" + E(s) + "' data-id='" + E(a.id) + "'>" + E(t("vers", { s: lib("s_", s) })) + "</button>";
+    }).join("") + "</div>";
+  }
+  function rendreKanban() {
+    var statuts = catalogue().statuts || ["proposee", "validee", "planifiee", "realisee", "abandonnee"];
+    var as = visibles();
+    $("vue-kanban").innerHTML = "<div class='pl__kanban'>" + statuts.map(function (s) {
+      var liste = as.filter(function (a) { return a.statut === s; }).sort(function (x, y) { return (x.annee || 9999) - (y.annee || 9999); });
+      return "<section class='pl__colonne' aria-label='" + E(lib("s_", s)) + "'><h3><span>" + E(lib("s_", s)) + "</span><span>" + liste.length + "</span></h3>" +
+        liste.map(function (a) {
+          var claude = a.propose_par_claude && a.statut === "proposee";
+          return "<div class='pl__carte-k" + (claude ? " pl__carte-k--claude" : "") + "' data-carte='" + E(a.id) + "'>" +
+            "<button type='button' class='pl__ouvrir' data-action='" + E(a.id) + "'><strong>" + E(titreAction(a)) + "</strong>" +
+            "<span class='nv-muet'>" + E((a.annee || "—") + " · " + labelUG(a.ug_id)) + "</span></button>" + boutonsTransition(a) + "</div>";
+        }).join("") + "</section>";
+    }).join("") + "</div>";
+  }
+  function rendreListes() {
+    var filtre = $("filtre-ug");
+    filtre.hidden = !etat.ug;
+    $("filtre-ug-texte").textContent = etat.ug ? t("ug_filtre", { ug: labelUG(etat.ug) }) : "";
+    $("btn-nouvelle").hidden = !peutEcrire();
+    ["tableau", "kanban"].forEach(function (o) { $("onglet-" + o).hidden = !expert(); });
+    $("onglets").hidden = !expert();
+    if (!expert() && etat.onglet !== "calendrier") etat.onglet = "calendrier";
+    ["calendrier", "tableau", "kanban"].forEach(function (o) {
+      $("onglet-" + o).setAttribute("aria-selected", String(etat.onglet === o));
+      $("vue-" + o).hidden = etat.onglet !== o;
+    });
+    var largeur = document.querySelector(".pl").classList.contains("pl--large");
+    document.querySelector(".pl").classList.toggle("pl--large", etat.onglet === "kanban");
+    if (largeur !== (etat.onglet === "kanban")) setTimeout(function () { carte.invalidateSize(); }, 0);
+    if (etat.onglet === "calendrier") rendreCalendrier();
+    if (etat.onglet === "tableau") rendreTableau();
+    if (etat.onglet === "kanban") rendreKanban();
+    rendreResume();
+  }
+
+  /* ---------------------------------------------- unité de gestion et Claude */
+  function rendreUG() {
+    var bloc = $("bloc-ug");
+    var u = etat.ug && etat.ugs.get(etat.ug);
+    if (!u) { bloc.hidden = true; bloc.innerHTML = ""; return; }
+    bloc.hidden = false;
+    var html = "<h3>" + E(u.label || etat.ug) + "</h3><div class='nv-muet' style='font-size:13px'>" +
+      E([u.surface_ha != null ? NV.nombre(u.surface_ha, 2) + " ha" : null, u.groupe].filter(Boolean).join(" · ")) + "</div>";
+    var note = etat.plan && etat.plan.commentaires_ug && etat.plan.commentaires_ug[etat.ug];
+    if (note) html += "<div><span class='nv-etiquette'>" + E(t("commentaire_ug")) + "</span><p style='margin:2px 0 0;white-space:pre-wrap'>" + E(note) + "</p></div>";
+    var scores = FAMILLES.filter(function (f) { return u[f[1]] != null; });
+    if (expert() && scores.length) {
+      html += "<div><span class='nv-etiquette'>" + E(t("familles_ug")) + "</span><div class='pl__scores'>" + scores.map(function (f) {
+        return "<span><span>" + E(f[0] + " · " + nomFamille(f[0])) + "</span><span class='nv-num'>" + NV.nombre(u[f[1]]) + "</span></span>";
+      }).join("") + "</div></div>";
+    }
+    if (sample) {
+      html += "<div class='pl__ligne'>" + (etat.profils.length ? "<label style='font-size:13px;display:flex;gap:6px;align-items:center'>" + E(t("profil")) +
+        " <select id='profil' class='nv-champ' style='padding:4px 6px;max-width:220px'>" + etat.profils.map(function (p) {
+          return "<option value='" + E(p.cle) + "'" + (p.cle === profilCourant() ? " selected" : "") + ">" + E(p.libelle) + "</option>";
+        }).join("") + "</select></label>" : "") +
+        "<button type='button' class='nv-bouton' id='btn-claude'>" + E(t("demander")) + "</button></div>";
+    }
+    html += "<div id='suggestions'></div>";
+    bloc.innerHTML = html;
+    rendreSuggestions();
+  }
+  function profilCourant() { return NV.stockage.lire("nemeton-profil:" + ((etat.plan && etat.plan.projet) || ""), "generalist"); }
+  function rendreSuggestions() {
+    var el = $("suggestions");
+    if (!el) return;
+    var s = etat.suggestions.filter(function (x) { return x.ug_id === etat.ug; });
+    if (!s.length && !etat.suggestionsTexte) { el.innerHTML = ""; return; }
+    var html = "<div class='nv-ia'><span class='nv-ia__marque'>" + E(t("suggestions")) + "</span>";
+    if (etat.suggestionsTexte) html += "<p class='nv-ia__texte'>" + E(etat.suggestionsTexte) + "</p>";
+    html += s.map(function (x) {
+      return "<div class='pl__suggestion' data-suggestion='" + E(x.cle) + "'><strong>" + E((x.annee || "—") + " · " + titreAction(x) + " · " + t("priorite_x", { p: lib("p_", x.priorite).toLowerCase() })) + "</strong>" +
+        (x.justification ? "<span style='font-size:13px'>" + E(t("justification", { texte: x.justification })) + "</span>" : "") +
+        (x.objectifs_lies && x.objectifs_lies.length ? "<span class='nv-muet' style='font-size:12px'>" + E(x.objectifs_lies.map(nomFamille).join(", ")) + "</span>" : "") +
+        "<div class='pl__ligne'>" + (peutEcrire() ? "<button type='button' class='nv-bouton' data-ajout='" + E(x.cle) + "'>" + E(t("suggestion_ajout")) + "</button>" : "") +
+        "<button type='button' class='nv-bouton nv-bouton--discret' data-ecart='" + E(x.cle) + "'>" + E(t("ecarter")) + "</button></div></div>";
+    }).join("");
+    html += "<p class='nv-muet' style='font-size:11px;margin:6px 0 0'>" + E(t("genere_ia")) + "</p></div>";
+    el.innerHTML = html;
+  }
+  function suggestionValide(x, ugId) {
+    var c = catalogue(), base = etat.plan.annee_base, h = etat.plan.horizon_annees || 20;
+    var types = c.types || Object.keys(COULEURS_TYPE), prios = c.priorites || ["haute", "moyenne", "basse"];
+    var annee = parseInt(x && x.annee, 10);
+    if (!x || types.indexOf(x.type) < 0 || (x.type === "autre" && !x.type_libre)) return null;
+    if (!(annee >= base + 1 && annee <= base + h)) return null;
+    return {
+      cle: "s" + Math.random().toString(36).slice(2, 9), ug_id: ugId, type: x.type, type_libre: x.type === "autre" ? String(x.type_libre) : null,
+      intensite: ["faible", "moderee", "forte"].indexOf(x.intensite) >= 0 ? x.intensite : null, annee: annee,
+      priorite: prios.indexOf(x.priorite) >= 0 ? x.priorite : "moyenne",
+      objectifs_lies: (Array.isArray(x.objectifs_lies) ? x.objectifs_lies : []).filter(function (f) { return FAMILLES.some(function (y) { return y[0] === f; }); }),
+      justification: x.justification ? String(x.justification).slice(0, 400) : ""
+    };
+  }
+  function demanderClaude() {
+    var u = etat.ugs.get(etat.ug); if (!u || !sample) return;
+    if (demande) demande.abort();
+    demande = new AbortController();
+    var p = etat.profils.filter(function (x) { return x.cle === profilCourant(); })[0];
+    var base = etat.plan.annee_base, h = etat.plan.horizon_annees || 20, c = catalogue();
+    var donnees = {
+      unite: { id: etat.ug, label: u.label, surface_ha: u.surface_ha, groupe: u.groupe,
+        familles: FAMILLES.filter(function (f) { return u[f[1]] != null; }).map(function (f) { return { code: f[0], nom: nomFamille(f[0]), score: u[f[1]] }; }),
+        note: (etat.plan.commentaires_ug || {})[etat.ug] || null },
+      actions_existantes: actionsUG(etat.ug).map(function (a) { return { type: a.type, annee: a.annee, statut: a.statut, priorite: a.priorite }; }),
+      types_autorises: c.types, annees: [base + 1, base + h]
+    };
+    var consigne = (p ? p.consigne + "\n\n" : "") +
+      (NV.lang === "en" ? "Answer in English." : "Réponds en français, en vouvoyant le lecteur.") +
+      " You help build the silvicultural action plan of a forest diagnosed with nemeton (12 families scored 0-100). " +
+      "Suggest at most 3 actions for the management unit below, consistent with its family scores and the actions already planned (do not duplicate them). " +
+      "Use only the data given; a missing score is unknown, never zero. A person will validate or dismiss each suggestion. " +
+      "Return ONLY a JSON object: {\"actions\": [{\"type\": <one of types_autorises>, \"type_libre\": <text when type is autre, else null>, " +
+      "\"intensite\": \"faible\"|\"moderee\"|\"forte\"|null, \"annee\": <calendar year between " + (base + 1) + " and " + (base + h) + ">, " +
+      "\"priorite\": \"haute\"|\"moyenne\"|\"basse\", \"objectifs_lies\": [<family codes>], \"justification\": <at most 30 words, citing family codes>}]}" +
+      "\n\nDATA:\n" + JSON.stringify(donnees);
+    var b = $("btn-claude"); if (b) b.disabled = true;
+    etat.suggestionsTexte = t("reflexion"); rendreSuggestions();
+    var ugId = etat.ug;
+    sample.json(consigne, { signal: demande.signal })
+      .then(function (r) {
+        var brutes = (r && Array.isArray(r.actions)) ? r.actions : [];
+        var bonnes = brutes.map(function (x) { return suggestionValide(x, ugId); }).filter(Boolean);
+        etat.suggestions = etat.suggestions.filter(function (x) { return x.ug_id !== ugId; }).concat(bonnes);
+        etat.suggestionsTexte = !bonnes.length ? t("aucune_suggestion") : (brutes.length > bonnes.length ? t("ignorees", { n: brutes.length - bonnes.length }) : "");
+      })
+      .catch(function (e) {
+        if (e && e.code === "cancelled") return;
+        if (e && e.code === "not_granted") { sample = null; etat.suggestionsTexte = ""; rendreUG(); return; }
+        etat.suggestionsTexte = t("erreur_ia", { message: (e && e.message) || "" });
+      })
+      .then(function () { var b2 = $("btn-claude"); if (b2) b2.disabled = false; rendreSuggestions(); });
+  }
+
+  /* ---------------------------------------------- fiche */
+  function ouvrir(id) {
+    if (!etat.action || etat.action.id !== id) etat.messageFiche = "";
+    etat.nouvelle = false;
+    etat.action = actions().filter(function (a) { return a.id === id; })[0] || null;
+    rendreFiche(); rendreListes();
+    if (etat.action) { $("fiche").hidden = false; var f = $("fiche").querySelector("h2"); if (f) f.focus(); }
+  }
+  function nouvelle() {
+    etat.nouvelle = true; etat.messageFiche = "";
+    etat.action = { ug_id: etat.ug || (etat.ugs.keys().next().value), type: "eclaircie", annee: (etat.plan.annee_base || new Date().getFullYear()) + 1,
+      priorite: "moyenne", statut: "proposee", objectifs_lies: [], quantite: {} };
+    rendreFiche(); $("fiche").hidden = false; $("f-type").focus();
+  }
+  function fermer() {
+    var id = etat.action && etat.action.id;
+    $("fiche").hidden = true; etat.action = null; etat.nouvelle = false; etat.messageFiche = ""; rendreListes();
+    var cible = id && document.querySelector("[data-action='" + CSS.escape(id) + "']");
+    if (cible) cible.focus();
+  }
+  function options(valeurs, courant, prefixe) {
+    return valeurs.map(function (v) { return "<option value='" + E(v) + "'" + (v === courant ? " selected" : "") + ">" + E(lib(prefixe, v)) + "</option>"; }).join("");
+  }
+  function rendreFiche() {
+    var el = $("fiche"), a = etat.action;
+    if (!a) { el.innerHTML = ""; return; }
+    var ecrit = peutEcrire(), c = catalogue(), q = a.quantite || {};
+    var dis = ecrit ? "" : " disabled";
+    var statuts = etat.nouvelle ? ["proposee", "validee", "planifiee"] : [a.statut].concat((c.transitions || {})[a.statut] || []);
+    var base = etat.plan.annee_base || new Date().getFullYear(), h = etat.plan.horizon_annees || 20;
+    var ugs = Array.from(etat.ugs.keys());
+    var html = "<div class='pl__fiche-tete'><h2 id='fiche-titre' tabindex='-1'>" + E(etat.nouvelle ? t("nouvelle_titre") : titreAction(a)) + "</h2>" +
+      "<button type='button' class='pl__fermer' id='btn-fermer' aria-label='" + E(t("fermer")) + "'>×</button></div>";
+    if (!etat.nouvelle && a.propose_par_claude && a.statut === "proposee") {
+      html += "<div class='nv-ia'><span class='nv-ia__marque'>" + E(t("propose_claude")) + "</span>" +
+        (a.source && a.source.extrait_texte ? "<p class='nv-ia__texte'>" + E(t("justification", { texte: a.source.extrait_texte })) + "</p>" : "") +
+        (ecrit ? "<div class='pl__ligne' style='margin-top:6px'><button type='button' class='nv-bouton nv-bouton--action' data-transition='validee' data-id='" + E(a.id) + "'>" + E(t("valider")) + "</button>" +
+          "<button type='button' class='nv-bouton' data-transition='abandonnee' data-id='" + E(a.id) + "'>" + E(t("ecarter")) + "</button></div>" : "") + "</div>";
+    }
+    if (!ecrit) html += "<p class='nv-muet' style='font-size:13px;margin:0'>" + E(t("lecture_seule")) + "</p>";
+    html += "<form class='pl__form' id='form-action' novalidate>" +
+      "<label class='pl__large'>" + E(t("f_ug")) + "<select id='f-ug'" + dis + ">" + ugs.map(function (id) { return "<option value='" + E(id) + "'" + (id === a.ug_id ? " selected" : "") + ">" + E(labelUG(id)) + "</option>"; }).join("") + "</select></label>" +
+      "<label>" + E(t("f_type")) + "<select id='f-type'" + dis + ">" + options(c.types || Object.keys(COULEURS_TYPE), a.type, "t_") + "</select></label>" +
+      "<label id='l-type-libre'" + (a.type === "autre" ? "" : " hidden") + ">" + E(t("f_type_libre")) + "<input id='f-type-libre' value='" + E(a.type_libre || "") + "'" + dis + "></label>" +
+      "<label>" + E(t("f_annee")) + "<input id='f-annee' type='number' inputmode='numeric' min='" + (base + 1) + "' max='" + (base + h) + "' value='" + E(a.annee || "") + "'" + dis + "></label>" +
+      "<label>" + E(t("f_priorite")) + "<select id='f-priorite'" + dis + ">" + options(c.priorites || ["haute", "moyenne", "basse"], a.priorite, "p_") + "</select></label>" +
+      "<label>" + E(t("f_statut")) + "<select id='f-statut'" + dis + ">" + options(statuts, a.statut, "s_") + "</select></label>";
+    if (expert()) {
+      html += "<label>" + E(t("f_intensite")) + "<select id='f-intensite'" + dis + "><option value=''>" + E(t("i_aucune")) + "</option>" + options(["faible", "moderee", "forte"], a.intensite, "i_") + "</select></label>" +
+        "<label>" + E(t("f_duree")) + "<input id='f-duree' type='number' min='1' value='" + E(a.duree || "") + "'" + dis + "></label>" +
+        [["volume_m3", "f_volume"], ["surface_ha", "f_surface"], ["nb_tiges", "f_tiges"], ["rdi", "f_rdi"], ["cout_eur", "f_cout"], ["revenu_eur", "f_revenu"]].map(function (x) {
+          return "<label>" + E(t(x[1])) + "<input data-quantite='" + x[0] + "' type='number' step='any' value='" + E(q[x[0]] != null ? q[x[0]] : "") + "'" + dis + "></label>";
+        }).join("");
+    }
+    html += "<fieldset class='pl__familles'><legend>" + E(t("f_objectifs")) + "</legend>" + FAMILLES.map(function (f) {
+      var on = (a.objectifs_lies || []).indexOf(f[0]) >= 0;
+      return "<label><input type='checkbox' data-famille='" + f[0] + "'" + (on ? " checked" : "") + dis + "> " + E(nomFamille(f[0])) + "</label>";
+    }).join("") + "</fieldset>" +
+      "<label class='pl__large'>" + E(t("f_commentaire")) + "<textarea id='f-commentaire'" + dis + ">" + E(a.commentaire || "") + "</textarea></label></form>";
+    html += "<div class='pl__actions-fiche'>" +
+      (ecrit ? "<button type='button' class='nv-bouton nv-bouton--action' id='btn-enregistrer'>" + E(t(etat.nouvelle ? "creer" : "enregistrer")) + "</button>" : "") +
+      (ecrit && !etat.nouvelle ? "<button type='button' class='nv-bouton pl__danger' id='btn-supprimer'>" + E(t("supprimer")) + "</button>" : "") +
+      (comments && !etat.nouvelle ? "<button type='button' class='nv-bouton nv-bouton--discret' id='btn-commenter'>" + E(t("commenter")) + "</button>" : "") +
+      "</div><div class='pl__confirmer' id='confirmer-suppr' hidden><span>" + E(t("confirmer_suppr")) + "</span>" +
+      "<button type='button' class='nv-bouton pl__danger' id='btn-oui-suppr'>" + E(t("oui_suppr")) + "</button>" +
+      "<button type='button' class='nv-bouton nv-bouton--discret' id='btn-non-suppr'>" + E(t("non")) + "</button></div>" +
+      "<p class='nv-statut' id='message-fiche' role='status' aria-live='polite'></p>";
+    if (!etat.nouvelle) {
+      var hist = ((etat.plan && etat.plan.historique) || []).filter(function (e) { return e.action_id === a.id; });
+      if (expert() && hist.length) html += "<section><h3 class='nv-etiquette' style='margin:0 0 6px'>" + E(t("historique")) + "</h3><ul class='pl__historique'>" + hist.map(ligneHistorique).join("") + "</ul></section>";
+      else if (!expert()) {
+        html += "<dl class='pl__lecture'><dt>" + E(t("f_statut")) + "</dt><dd>" + E(lib("s_", a.statut)) + "</dd>" +
+          "<dt>" + E(t("derniere_modif")) + "</dt><dd>" + E(a.modifie_par || a.cree_par || "—") + "</dd></dl>";
+      }
+    }
+    el.innerHTML = html;
+    if (etat.messageFiche) $("message-fiche").textContent = etat.messageFiche;
+  }
+  function texteValeur(champ, v) {
+    if (v == null || v === "") return "—";
+    if (champ === "statut") return lib("s_", v);
+    if (champ === "priorite") return lib("p_", v);
+    if (champ === "type") return lib("t_", v);
+    if (champ === "annee_cible") return String((etat.plan.annee_base || 0) + Number(v));
+    if (typeof v === "object") return Array.isArray(v) ? v.join(", ") : Object.keys(v).filter(function (k) { return v[k] != null; }).map(function (k) { return k + " " + v[k]; }).join(", ") || "—";
+    return String(v);
+  }
+  function ligneHistorique(e) {
+    var quand = e.ts ? NV.date(String(e.ts).slice(0, 10)) + " " + String(e.ts).slice(11, 16) : "";
+    var quoi = e.op === "create" ? t("h_create") : e.op === "delete" ? t("h_delete") :
+      t("h_update", { champ: e.champ === "annee_cible" ? t("f_annee") : (t("f_" + e.champ) !== "f_" + e.champ ? t("f_" + e.champ) : e.champ),
+        ancien: texteValeur(e.champ, e.ancien), nouveau: texteValeur(e.champ, e.nouveau) });
+    return "<li><time>" + E(quand) + "</time> · " + E(quoi) + " <span class='nv-muet'>" + E(t("par", { qui: e.user || "?" })) + "</span></li>";
+  }
+  // Forme comparable d'une valeur : null pour le vide, objets sans clés nulles et clés triées.
+  function canon(v) {
+    if (v == null || v === "") return "null";
+    if (Array.isArray(v)) return JSON.stringify(v.slice().sort());
+    if (typeof v === "object") {
+      var o = {}; Object.keys(v).sort().forEach(function (k) { if (v[k] != null) o[k] = v[k]; });
+      return Object.keys(o).length ? JSON.stringify(o) : "null";
+    }
+    return JSON.stringify(v);
+  }
+  function lireFormulaire() {
+    var a = etat.action, m = {};
+    var val = function (id) { var el = $(id); return el ? el.value : undefined; };
+    var champs = { ug_id: val("f-ug"), type: val("f-type"), priorite: val("f-priorite"), statut: val("f-statut"), commentaire: val("f-commentaire") || null };
+    if (champs.type === "autre") champs.type_libre = val("f-type-libre");
+    var annee = parseInt(val("f-annee"), 10); champs.annee = isNaN(annee) ? null : annee;
+    if (expert()) {
+      champs.intensite = val("f-intensite") || null;
+      var d = parseInt(val("f-duree"), 10); champs.duree = isNaN(d) ? null : d;
+      var q = Object.assign({}, a.quantite || {});
+      document.querySelectorAll("[data-quantite]").forEach(function (el) { var n = parseFloat(el.value); if (isNaN(n)) delete q[el.dataset.quantite]; else q[el.dataset.quantite] = n; });
+      champs.quantite = q;
+    }
+    champs.objectifs_lies = Array.from(document.querySelectorAll("[data-famille]:checked")).map(function (el) { return el.dataset.famille; });
+    Object.keys(champs).forEach(function (k) {
+      if (etat.nouvelle) { if (champs[k] != null && champs[k] !== "") m[k] = champs[k]; return; }
+      if (canon(k === "annee" ? a.annee : a[k]) !== canon(champs[k])) m[k] = champs[k];
+    });
+    return m;
+  }
+
+  /* ---------------------------------------------- écritures */
+  // Le message de la fiche survit à ses rendus (rafraîchissement en direct).
+  function signalerFiche(texte) {
+    etat.messageFiche = texte;
+    var el = $("message-fiche"); if (el) NV.annoncer(el, texte, 0); else signaler(texte);
+  }
+  function apresEcriture(texte, action) {
+    signaler(texte, 5000);
+    return rafraichir().then(function () {
+      if (action && $("fiche").hidden === false) ouvrir(action.id);
+    });
+  }
+  function erreurEcriture(e) {
+    if (e && e.classe === "nemetonclaude_conflit" && e.candidats && e.candidats[0]) {
+      etat.action = e.candidats[0]; rendreFiche();
+      signalerFiche(t("conflit", { message: e.message }));
+      rafraichir();
+      return;
+    }
+    signalerFiche(NV.messageMcp(e));
+  }
+  function enregistrer() {
+    var m = lireFormulaire();
+    if (!Object.keys(m).length) { signalerFiche(t("rien_change")); return; }
+    var b = $("btn-enregistrer"); b.disabled = true; signalerFiche(t("envoi"));
+    var creation = etat.nouvelle;
+    var appel = creation
+      ? NV.appeler(mcp, "ajouter_action", { projet: etat.plan.projet, action: Object.assign(m, { source: { origine: "vue" } }) })
+      : NV.appeler(mcp, "modifier_action", { projet: etat.plan.projet, action_id: etat.action.id, modifications: m, attendu: etat.action.version });
+    appel.then(function (r) { etat.nouvelle = false; return apresEcriture(t(creation ? "ajoute" : "enregistre"), r.action); })
+      .catch(erreurEcriture).then(function () { var b2 = $("btn-enregistrer"); if (b2) b2.disabled = false; });
+  }
+  function transition(id, statut) {
+    var a = actions().filter(function (x) { return x.id === id; })[0];
+    if (!a) return;
+    signaler(t("envoi"));
+    NV.appeler(mcp, "modifier_action", { projet: etat.plan.projet, action_id: id, modifications: { statut: statut }, attendu: a.version })
+      .then(function (r) { return apresEcriture(t("enregistre"), etat.action && etat.action.id === id ? r.action : null); })
+      .catch(function (e) { erreurEcriture(e); signaler(NV.messageMcp(e)); });
+  }
+  function supprimer() {
+    var id = etat.action.id;
+    NV.appeler(mcp, "supprimer_action", { projet: etat.plan.projet, action_id: id })
+      .then(function () { fermer(); return apresEcriture(t("supprime")); })
+      .catch(erreurEcriture);
+  }
+  function ajouterSuggestion(cle) {
+    var x = etat.suggestions.filter(function (s) { return s.cle === cle; })[0];
+    if (!x) return;
+    var action = { ug_id: x.ug_id, type: x.type, type_libre: x.type_libre, intensite: x.intensite, annee: x.annee, priorite: x.priorite,
+      objectifs_lies: x.objectifs_lies, statut: "proposee", source: { origine: "claude", extrait_texte: x.justification } };
+    Object.keys(action).forEach(function (k) { if (action[k] == null) delete action[k]; });
+    signaler(t("envoi"));
+    NV.appeler(mcp, "ajouter_action", { projet: etat.plan.projet, action: action })
+      .then(function () {
+        etat.suggestions = etat.suggestions.filter(function (s) { return s.cle !== cle; });
+        return apresEcriture(t("ajoute"));
+      })
+      .catch(function (e) { signaler(NV.messageMcp(e)); });
+  }
+
+  /* ---------------------------------------------- suivi en direct */
+  function recevoir(res) {
+    var p = res && res.payload;
+    if (typeof p === "string") { try { p = JSON.parse(p); } catch (x) { return; } }
+    if (!p || p.ok === false) { if (p && p.erreur) signaler(p.erreur); return; }
+    etat.plan = p;
+    etat.recuA = res.cache && res.cache.storedAt ? res.cache.storedAt : Date.now();
+    if (etat.action && !etat.nouvelle) {
+      var maj = actions().filter(function (a) { return a.id === etat.action.id; })[0];
+      // Une action ouverte n'est pas réécrite sous les doigts du lecteur : seulement si elle n'est pas en cours de saisie.
+      if (maj && maj.version !== etat.action.version && !document.activeElement.closest("#form-action")) { etat.action = maj; rendreFiche(); }
+    }
+    tout();
+  }
+  function suivre() {
+    if (arreter || !mcp || !etat.plan) return;
+    arreter = mcp.watchTool(NV.SERVEUR, "plan_actions", { projet: etat.plan.projet, geojson: false, langue: NV.lang }, function (ev) {
+      if (ev.type === "data") return recevoir(ev.result);
+      var err = ev.error || {};
+      if ({ needs_reauth: 1, server_not_connected: 1, blocked_by_policy: 1, approval_required: 1, not_in_manifest: 1 }[err.code]) {
+        mcp = null; arreter = null; tout();
+      }
+      signaler(NV.messageMcp(err));
+    }, { refetchInterval: 30000 });
+  }
+  function rafraichir() {
+    if (!mcp || !etat.plan) return Promise.resolve();
+    return mcp.callTool(NV.SERVEUR, "plan_actions", { projet: etat.plan.projet, geojson: false, langue: NV.lang }, { cache: { refresh: true } })
+      .then(recevoir, function (e) { signaler(NV.messageMcp(e)); });
+  }
+
+  /* ---------------------------------------------- événements */
+  document.addEventListener("click", function (ev) {
+    var el = ev.target.closest("[data-action],[data-transition],[data-tri],[data-ajout],[data-ecart]");
+    if (!el) return;
+    if (el.dataset.transition) return transition(el.dataset.id, el.dataset.transition);
+    if (el.dataset.tri) { etat.tri = { col: el.dataset.tri, sens: etat.tri.col === el.dataset.tri ? -etat.tri.sens : 1 }; return rendreTableau(); }
+    if (el.dataset.ajout) return ajouterSuggestion(el.dataset.ajout);
+    if (el.dataset.ecart) { etat.suggestions = etat.suggestions.filter(function (s) { return s.cle !== el.dataset.ecart; }); return rendreSuggestions(); }
+    if (el.dataset.action) return ouvrir(el.dataset.action);
+  });
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape" && !$("fiche").hidden) fermer();
+    if (ev.key === "Enter" && ev.target.matches("tr[data-action]")) ouvrir(ev.target.dataset.action);
+  });
+  $("fiche").addEventListener("click", function (ev) {
+    var id = ev.target.id;
+    if (id === "btn-fermer") fermer();
+    if (id === "btn-enregistrer") enregistrer();
+    if (id === "btn-supprimer") { $("confirmer-suppr").hidden = false; $("btn-non-suppr").focus(); }
+    if (id === "btn-non-suppr") $("confirmer-suppr").hidden = true;
+    if (id === "btn-oui-suppr") supprimer();
+    if (id === "btn-commenter" && comments) {
+      var cible = document.querySelector("[data-action='" + CSS.escape(etat.action.id) + "']") || $("fiche-titre");
+      comments.openComposer({ element: cible }).catch(function (e) { if (e && e.code === "unavailable") { comments = null; rendreFiche(); } });
+    }
+  });
+  $("fiche").addEventListener("change", function (ev) {
+    if (ev.target.id === "f-type") $("l-type-libre").hidden = ev.target.value !== "autre";
+  });
+  $("bloc-ug").addEventListener("click", function (ev) { if (ev.target.id === "btn-claude") demanderClaude(); });
+  $("bloc-ug").addEventListener("change", function (ev) {
+    if (ev.target.id === "profil") NV.stockage.ecrire("nemeton-profil:" + etat.plan.projet, ev.target.value);
+  });
+  $("btn-sans-filtre").addEventListener("click", function () { etat.ug = null; recolorer(); rendreListes(); rendreUG(); });
+  $("btn-nouvelle").addEventListener("click", nouvelle);
+  $("couleur").addEventListener("change", function () { etat.couleur = this.value; recolorer(); });
+  ["calendrier", "tableau", "kanban"].forEach(function (o) {
+    $("onglet-" + o).addEventListener("click", function () { etat.onglet = o; rendreListes(); });
+  });
+  function changerMode(m) {
+    etat.mode = m; NV.stockage.ecrire("nemeton-plan-mode", m);
+    $("mode-simple").setAttribute("aria-pressed", String(m === "simple"));
+    $("mode-expert").setAttribute("aria-pressed", String(m === "expert"));
+    tout(); if (etat.action) rendreFiche();
+  }
+  $("mode-simple").addEventListener("click", function () { changerMode("simple"); });
+  $("mode-expert").addEventListener("click", function () { changerMode("expert"); });
+
+  $("btn-csv").addEventListener("click", function () {
+    if (!downloads) return;
+    var sep = NV.lang === "fr" ? ";" : ",";
+    var cel = function (v) {
+      if (v == null) return "";
+      if (typeof v === "number") return NV.lang === "fr" ? String(v).replace(".", ",") : String(v);
+      return /[";,\n]/.test(v) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v);
+    };
+    var cols = ["id", "annee", "ug_id", "ug_label", "type", "type_libre", "intensite", "priorite", "statut", "volume_m3", "surface_ha", "nb_tiges", "cout_eur", "revenu_eur", "objectifs_lies", "commentaire", "origine"];
+    var lignes = actions().map(function (a) {
+      var q = a.quantite || {};
+      var v = { id: a.id, annee: a.annee, ug_id: a.ug_id, ug_label: labelUG(a.ug_id), type: a.type, type_libre: a.type_libre, intensite: a.intensite,
+        priorite: a.priorite, statut: a.statut, volume_m3: q.volume_m3, surface_ha: q.surface_ha, nb_tiges: q.nb_tiges, cout_eur: q.cout_eur,
+        revenu_eur: q.revenu_eur, objectifs_lies: (a.objectifs_lies || []).join(" "), commentaire: a.commentaire, origine: a.source && a.source.origine };
+      return cols.map(function (c) { return cel(v[c]); }).join(sep);
+    });
+    downloads.save({ filename: "plan_" + (etat.plan.projet || "projet") + ".csv", data: new Blob(["﻿" + [cols.join(sep)].concat(lignes).join("\r\n")], { type: "text/csv" }) })
+      .then(function () { signaler(t("csv_ok"), 4000); }, function () { signaler(t("csv_refus"), 4000); });
+  });
+  $("btn-marculus").addEventListener("click", function () {
+    var b = this; b.disabled = true; signaler(t("marculus_cours"));
+    NV.appeler(mcp, "exporter_marculus", { projet: etat.plan.projet })
+      .then(function (r) {
+        var lien = r.urls && r.urls[r.fichier];
+        var el = $("message");
+        el.textContent = t("marculus_ok", { n: r.chantiers }) + " ";
+        if (lien) { var a = document.createElement("a"); a.href = lien; a.target = "_blank"; a.rel = "noopener"; a.textContent = t("marculus_lien"); el.appendChild(a); }
+        else el.appendChild(document.createTextNode(t("marculus_fichier", { f: r.fichier })));
+      })
+      .catch(function (e) { signaler(NV.messageMcp(e)); })
+      .then(function () { b.disabled = false; });
+  });
+
+  /* ---------------------------------------------- rendu global et langue */
+  function tout() {
+    if (!etat.plan) return;
+    $("titre").textContent = etat.plan.nom || etat.plan.projet;
+    var types = (etat.plan.catalogue && etat.plan.catalogue.types_marculus) || [];
+    $("btn-marculus").hidden = !(peutEcrire() && expert() && actions().some(function (a) { return types.indexOf(a.type) >= 0; }));
+    $("btn-csv").hidden = !downloads;
+    recolorer(); rendreListes(); rendreUG();
+  }
+  function majLangue() {
+    NV.traduire();
+    $("lang-fr").setAttribute("aria-pressed", String(NV.lang === "fr"));
+    $("lang-en").setAttribute("aria-pressed", String(NV.lang === "en"));
+    $("mode-simple").setAttribute("aria-pressed", String(etat.mode === "simple"));
+    $("mode-expert").setAttribute("aria-pressed", String(etat.mode === "expert"));
+    tout(); if (etat.action) rendreFiche();
+  }
+  $("lang-fr").addEventListener("click", function () { NV.changerLangue("fr"); majLangue(); });
+  $("lang-en").addEventListener("click", function () { NV.changerLangue("en"); majLangue(); });
+
+  /* ---------------------------------------------- chargement */
+  Promise.all([NV.charger("plan.json"), NV.charger("plan.geojson"), NV.charger("contexte.geojson").catch(function () { return null; })])
+    .then(function (r) {
+      etat.meta = r[0];
+      if (!etat.meta || !etat.meta.projet) throw new Error("plan.json");
+      etat.plan = etat.meta;
+      $("bandeau-exemple").hidden = !etat.meta.exemple;
+      if (r[2]) NV.repere(carte, r[2], NV.styleContexte, "contexte");
+      if (r[1] && r[1].features) {
+        L.geoJSON(r[1], {
+          style: function (f) { return styleUG(f.properties.ug_id); },
+          onEachFeature: function (f, couche) {
+            var id = f.properties.ug_id;
+            etat.ugs.set(id, f.properties); etat.couches.set(id, couche);
+            couche.bindTooltip(function () {
+              var n = actionsUG(id).length, a = prochaine(id);
+              return "<strong>" + E(f.properties.label || id) + "</strong><br>" + E(t("n_actions", { n: n })) + (a ? "<br>" + E(a.annee + " · " + titreAction(a)) : "");
+            }, { sticky: true });
+            couche.on("click", function () { choisirUG(id, false); });
+            groupe.addLayer(couche);
+          }
+        });
+        if (groupe.getLayers().length) carte.fitBounds(groupe.getBounds(), { padding: [16, 16] });
+      }
+      majLangue();
+      if (etat.meta.exemple) return;
+      NV.capacite("sample").then(function (s) { sample = s; rendreUG(); });
+      NV.capacite("downloads").then(function (d) { downloads = d; tout(); });
+      NV.capacite("comments").then(function (c) { comments = c; if (etat.action) rendreFiche(); });
+      return NV.capaciteNemeton().then(function (m) {
+        mcp = m;
+        if (!mcp) { tout(); return; }
+        tout();
+        suivre();
+        NV.appeler(mcp, "profils_experts", { langue: NV.lang }, { cache: { staleTime: 300000 } })
+          .then(function (r) { etat.profils = r.profils || []; rendreUG(); }, function () { /* profils facultatifs */ });
+      });
+    })
+    .catch(function (e) {
+      var a = document.createElement("p");
+      a.className = "nv-alerte";
+      a.textContent = t("erreur_donnees", { message: e.message });
+      $("message").replaceWith(a);
+    });
+})();
+</script>

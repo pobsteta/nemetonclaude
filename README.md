@@ -16,15 +16,16 @@ référence fonctionnelle.
 Le brief qui cadre le projet est dans
 [`specs/BRIEF-visualisation-nemeton-claude.md`](specs/BRIEF-visualisation-nemeton-claude.md).
 
-## Contenu (lots 1 et 2)
+## Contenu (lots 1 à 3)
 
 | Dossier | Rôle |
 | --- | --- |
-| `r/` | Paquet R **nemetonclaude** : étend le serveur MCP de nemetonshiny (8 outils existants) avec `chercher_commune`, `parcelles_commune`, `creer_projet`, `vue_atlas`, `contexte_carto`, `detail_indicateur` ; le sert en local (stdio) ou à distance (HTTP, authentification Keycloak, liens de téléchargement signés) |
+| `r/` | Paquet R **nemetonclaude** : étend le serveur MCP de nemetonshiny (8 outils existants) avec `chercher_commune`, `parcelles_commune`, `creer_projet`, `vue_atlas`, `contexte_carto`, `detail_indicateur` , et les outils du plan d'actions (`plan_actions`, `ajouter_action`, `modifier_action`, `supprimer_action`, `profils_experts`, `exporter_marculus`) ; le sert en local (stdio) ou à distance (HTTP, authentification Keycloak, liens de téléchargement signés) |
 | `vues/moteur/` | Moteur commun des vues : `nemeton-view.js` (carte Leaflet sans tuiles, palettes, radar, i18n FR/EN, appels au connecteur) et `nemeton-view.css` (charte, thème clair et sombre, styles Leaflet inlinés) |
 | `vues/selection/` | **Vue 0 — Sélection des parcelles** : carte de la commune, clic pour ajouter ou retirer, recherche « AB 12 », sélection au rectangle, surface totale, BD Forêt en repère, « Créer le projet » via le connecteur ou liste d'IDU à copier |
 | `vues/atlas/` | **Vue 1 — Atlas du projet** : rail des 12 familles, carte choroplèthe ou bivariée 5 × 5, tableau lié à la carte, fiche d'UG avec radar 12 axes et sous-indicateurs, valeurs manquantes hachurées avec leur raison, comparaison de deux UG, « Demander à Claude », exports CSV et GeoPackage |
 | `vues/calcul/` | **Vue 2 — Calcul en cours** : suivi en direct d'`etat_calcul` (avancement, indicateurs, temps écoulé, tâche), Annuler avec confirmation, Relancer, journal en cas d'échec, invitation à ouvrir l'Atlas ; lisible sur téléphone |
+| `vues/plan/` | **Vue 3 — Plan d'actions partagé** : le plan du projet nemeton (le même que dans nemetonshiny), carte des UG colorée par prochaine action, type, priorité ou statut ; calendrier en vue simple, tableau, kanban, quantités et historique en vue experte ; fiche d'action modifiable selon les rôles, avec détection des modifications concurrentes ; propositions de Claude en ambre, à valider ; commentaires ancrés ; paquet Marculus |
 | `vues/exemples/` | Données **fictives** pour essayer les vues sans nemeton, et catalogue des familles du cœur |
 | `skills/nemeton-vues/` | Skill du plugin : quand ouvrir quelle vue, comment la publier, contrat de données, charte |
 | `.claude-plugin/`, `.mcp.json` | Manifeste du plugin et déclaration du serveur MCP `nemeton` |
@@ -86,9 +87,11 @@ Le serveur est une *ressource protégée* au sens de la spécification MCP :
   audience `nemeton-claude`, expiration), sinon `401` avec le défi
   `WWW-Authenticate` qui lance la connexion OAuth côté claude.ai ;
 - les rôles du realm décident des outils : `lecteur` lit (projets, vues,
-  états de calcul), `gestionnaire` et `admin` écrivent aussi (créer un
-  projet, lancer ou annuler un calcul, rapport, GeoPackage) ; un compte sans
-  rôle nemeton reçoit `403` ;
+  états de calcul, plan d'actions, profils experts), `gestionnaire` et
+  `admin` écrivent aussi (créer un projet, lancer ou annuler un calcul,
+  modifier le plan d'actions, rapport, GeoPackage, paquet Marculus) ; un
+  compte sans rôle nemeton reçoit `403`. Le compte Keycloak signe
+  l'historique du plan d'actions ;
 - les fichiers écrits par les outils (GeoJSON des vues, rapport, GeoPackage)
   sont servis par des liens signés valables une heure, ajoutés aux réponses
   sous `urls`.
@@ -139,7 +142,7 @@ détail).
 ```bash
 npm install
 npm run exemples              # régénère vues/exemples/ (données fictives)
-node outils/assembler-vue.mjs atlas vues/exemples/atlas .apercu/atlas   # idem calcul, selection
+node outils/assembler-vue.mjs atlas vues/exemples/atlas .apercu/atlas   # idem calcul, plan, selection
 npx serve .apercu             # puis ouvrir /atlas/ et /selection/
 npm test                      # tests unitaires puis de bout en bout (Chromium)
 ```
@@ -197,4 +200,9 @@ quelle. Les PR sont fusionnées en « squash » : leur titre devient la ligne de
 - Le cœur nemeton déclare aujourd'hui 41 sous-indicateurs, et non 31 comme
   dans le brief. Les vues lisent le catalogue joint aux données et s'adaptent
   au nombre réel.
-- Lots suivants : plan d'actions partagé (lot 3), rasters pré-rendus (lot 4).
+- Le plan d'actions ne s'écrit pas pendant que nemetonshiny édite le
+  projet (verrou d'édition de l'application) : la vue le dit et l'on
+  réessaie après fermeture. L'import du martelage Marculus reste dans
+  nemetonshiny.
+- Lot suivant : rasters pré-rendus (lot 4 : Santé des forêts, Accessibilité,
+  reGeneration).

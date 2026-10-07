@@ -23,7 +23,7 @@ const dist = join(racine, ".apercu");
 rmSync(dist, { recursive: true, force: true });
 mkdirSync(dist);
 execFileSync("node", [join(racine, "outils/generer-exemples.mjs")]);
-for (const v of ["selection", "atlas", "calcul"]) {
+for (const v of ["selection", "atlas", "calcul", "plan"]) {
   execFileSync("node", [join(racine, "outils/assembler-vue.mjs"), v, join(racine, "vues/exemples", v), join(dist, v)]);
 }
 // Vue Calcul branchée sur un connecteur simulé : un vrai projet (pas un exemple).
@@ -31,6 +31,13 @@ const direct = join(dist, "_donnees-calcul-direct");
 mkdirSync(direct, { recursive: true });
 writeFileSync(join(direct, "calcul.json"), JSON.stringify({ projet: "p-test", nom: "Forêt de test" }));
 execFileSync("node", [join(racine, "outils/assembler-vue.mjs"), "calcul", direct, join(dist, "calcul-direct")]);
+// Vue Plan branchée sur un connecteur simulé, avec droit d'écriture.
+const planDirect = join(dist, "_donnees-plan-direct");
+mkdirSync(planDirect, { recursive: true });
+const planExemple = JSON.parse(readFileSync(join(racine, "vues/exemples/plan/plan.json"), "utf8"));
+writeFileSync(join(planDirect, "plan.json"), JSON.stringify({ ...planExemple, exemple: false, peut_ecrire: true }));
+for (const f of ["plan.geojson", "contexte.geojson"]) writeFileSync(join(planDirect, f), readFileSync(join(racine, "vues/exemples/plan", f)));
+execFileSync("node", [join(racine, "outils/assembler-vue.mjs"), "plan", planDirect, join(dist, "plan-direct")]);
 
 const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".geojson": "application/geo+json" };
 const serveur = createServer((req, res) => {
@@ -60,7 +67,7 @@ async function capture(page, nom) { if (captures) await page.screenshot({ path: 
 
 let echecs = 0;
 async function test(nom, fn) {
-  try { await fn(); console.log("ok  " + nom); } catch (e) { echecs++; console.log("ÉCHEC " + nom + "\n     " + e.message); }
+  try { await fn(); console.log("ok  " + nom); } catch (e) { echecs++; console.log("ÉCHEC " + nom + "\n     " + e.message + (process.env.PILE ? "\n" + e.stack : "")); }
 }
 
 /* ------------------------------------------------------------ Sélection */
@@ -170,6 +177,33 @@ await test("Atlas : sombre, EN, téléphone 400 px", async () => {
   const deborde = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
   assert.equal(deborde, false);
   await capture(page, "atlas-mobile-sombre");
+  await ctx.close();
+});
+
+await test("Atlas : profils experts servis par le connecteur et passés à Claude", async () => {
+  const simule = () => {
+    const mcp = {
+      listTools: () => Promise.resolve({ servers: [{ server: "nemeton", tools: [{ name: "profils_experts" }] }] }),
+      callTool: (server, tool) => Promise.resolve({ payload: tool === "profils_experts"
+        ? { ok: true, profils: [{ cle: "generalist", libelle: "Généraliste", consigne: "Tu es généraliste." }, { cle: "naturaliste", libelle: "Naturaliste", consigne: "Tu es naturaliste, attentif aux habitats." }] }
+        : { ok: false, erreur: "non simulé" } })
+    };
+    const sample = (consigne) => { window.__consigne = consigne; return Promise.resolve({ text: "Réponse simulée." }); };
+    window.claude = { use: (nom) => Promise.resolve(nom === "mcp" ? mcp : nom === "sample" ? sample : null) };
+  };
+  const { ctx, page } = await ouvrir("/atlas/", { claude: simule });
+  await page.waitForFunction(() => Array.from(document.querySelectorAll("#profil option")).some((o) => o.textContent === "Naturaliste"));
+  // Le bloc « Demander à Claude » vit dans la fiche d'une unité.
+  await page.locator("#carte path.leaflet-interactive").nth(10).click({ force: true });
+  await page.waitForSelector("#profil", { state: "visible" });
+  await page.selectOption("#profil", "naturaliste");
+  await page.fill("#question", "Que faire pour la biodiversité ?");
+  await page.click("#btn-demander");
+  await page.waitForFunction(() => window.__consigne);
+  const consigne = await page.evaluate(() => window.__consigne);
+  assert.match(consigne, /^Tu es naturaliste, attentif aux habitats\./);
+  assert.match(consigne, /Reader profile: Naturaliste/);
+  await page.waitForFunction(() => /Réponse simulée/.test(document.getElementById("reponse-texte").textContent));
   await ctx.close();
 });
 
@@ -284,6 +318,190 @@ await test("Calcul : connecteur absent ou refusé, sombre, EN, téléphone 400 p
   await sans.page.waitForSelector("#sans-connecteur:not([hidden])", { timeout: 15000 });
   assert.equal(await sans.page.isVisible("#btn-annuler"), false);
   await sans.ctx.close();
+});
+
+/* ------------------------------------------------------------ Plan */
+// Connecteur simulé : tient le plan en mémoire (window.__plan), applique
+// ajouter/modifier/supprimer, et note chaque appel dans window.__appels.
+function planSimule(plan) {
+  window.__plan = plan;
+  window.__appels = [];
+  window.__conflit = false;
+  const rendre = (x) => Promise.resolve({ payload: x });
+  const mcp = {
+    listTools: () => Promise.resolve({ servers: [{ server: "nemeton", tools: [{ name: "plan_actions" }] }] }),
+    watchTool: (server, tool, input, handler) => {
+      window.__appels.push({ type: "watch", tool, input });
+      window.__watch = handler;
+      setTimeout(() => handler({ type: "data", result: { payload: JSON.parse(JSON.stringify(window.__plan)) } }), 0);
+      return () => { window.__watch = null; };
+    },
+    callTool: (server, tool, input) => {
+      window.__appels.push({ type: "call", tool, input });
+      const p = window.__plan;
+      if (tool === "plan_actions") return rendre(JSON.parse(JSON.stringify(p)));
+      if (tool === "profils_experts") return rendre({ ok: true, profils: [{ cle: "generalist", libelle: "Généraliste", consigne: "Tu es généraliste." }, { cle: "elu_local", libelle: "Élu local", consigne: "Tu parles à un élu." }] });
+      if (tool === "ajouter_action") {
+        const a = { ...input.action, id: "act_nouvelle_" + p.actions.length, version: "n1", propose_par_claude: input.action.source && input.action.source.origine === "claude" };
+        p.actions.push(a);
+        return rendre({ ok: true, action: a });
+      }
+      if (tool === "modifier_action") {
+        const a = p.actions.find((x) => x.id === input.action_id);
+        if (window.__conflit) {
+          // Un autre compte a modifié l'action entre-temps.
+          Object.assign(a, { priorite: "basse", modifie_par: "alice", version: "autre" });
+          return rendre({ ok: false, erreur: "L'action a été modifiée par alice pendant votre saisie.", classe: "nemetonclaude_conflit", candidats: [{ ...a }] });
+        }
+        if (input.attendu !== a.version) return rendre({ ok: false, erreur: "version inattendue " + input.attendu, classe: "x" });
+        Object.assign(a, input.modifications, { version: a.version + "+" });
+        return rendre({ ok: true, action: a });
+      }
+      if (tool === "supprimer_action") { p.actions = p.actions.filter((x) => x.id !== input.action_id); return rendre({ ok: true }); }
+      if (tool === "exporter_marculus") return rendre({ ok: true, fichier: "/srv/p/exports/marculus.zip", chantiers: 3, urls: { "/srv/p/exports/marculus.zip": "https://nemeton.test/telechargement/x/marculus.zip" } });
+      return rendre({ ok: false, erreur: "outil inconnu " + tool });
+    }
+  };
+  const sample = { json: (consigne) => { window.__consigne = consigne; return Promise.resolve({ actions: [
+    { type: "eclaircie", intensite: "moderee", annee: 2030, priorite: "haute", objectifs_lies: ["P", "B"], justification: "Production (P) élevée." },
+    { type: "coupe_magique", annee: 2031, priorite: "basse" }] }); } };
+  window.claude = { use: (nom) => Promise.resolve(nom === "mcp" ? mcp : nom === "sample" ? sample : null) };
+}
+
+await test("Plan : exemple en lecture seule, calendrier, filtre par unité, vue experte", async () => {
+  const { ctx, page } = await ouvrir("/plan/");
+  await page.waitForSelector("#carte path.leaflet-interactive");
+  assert.equal(await page.$$eval("#carte path.leaflet-interactive", (p) => p.length), 60);
+  assert.equal(await page.textContent("#titre"), "Forêt exemple (données fictives)");
+  assert.equal(await page.isVisible("#bandeau-exemple"), true);
+  assert.equal(await page.isVisible("#btn-nouvelle"), false);
+  assert.equal(await page.isVisible("#onglets"), false, "pas d'onglets en vue simple");
+  assert.equal(await page.$$eval("#vue-calendrier .pl__action", (b) => b.length), 11);
+  assert.equal(await page.$$eval("#vue-calendrier .pl__action--claude", (b) => b.length), 2);
+  assert.match(await page.textContent("#resume"), /Actions\s*10/);
+  // Une proposition de Claude ouvre sa fiche, en lecture seule.
+  await page.click("#vue-calendrier .pl__action--claude");
+  assert.equal(await page.isVisible("#fiche"), true);
+  assert.match(await page.textContent("#fiche"), /Proposée par Claude/);
+  assert.equal(await page.isDisabled("#f-type"), true);
+  assert.match(await page.textContent("#fiche"), /Lecture seule/);
+  await page.keyboard.press("Escape");
+  assert.equal(await page.isVisible("#fiche"), false);
+  // Vue experte : tableau trié et kanban.
+  await page.click("#mode-expert");
+  await page.click("#onglet-tableau");
+  assert.equal(await page.$$eval("#vue-tableau tbody tr", (r) => r.length), 11);
+  const annees = await page.$$eval("#vue-tableau tbody tr td:first-child", (t) => t.map((x) => Number(x.textContent)));
+  assert.deepEqual(annees, [...annees].sort((a, b) => a - b));
+  await page.click("#onglet-kanban");
+  assert.equal(await page.$$eval("#vue-kanban .pl__colonne", (c) => c.length), 5);
+  assert.match(await page.textContent("#resume"), /Coût/);
+  await capture(page, "plan-expert-kanban");
+  // Filtre par unité depuis la carte (préférence de vue experte mémorisée).
+  await page.click("#onglet-calendrier");
+  const ugAvecAction = await page.evaluate(() => document.querySelector("#vue-calendrier .pl__action-sous").textContent.split(" · ")[0]);
+  await page.locator("#carte path.leaflet-interactive").nth(3).click({ force: true });
+  assert.equal(await page.isVisible("#filtre-ug"), true);
+  assert.equal(await page.isVisible("#bloc-ug"), true);
+  void ugAvecAction;
+  await capture(page, "plan-ug");
+  await ctx.close();
+});
+
+await test("Plan : transitions, édition, conflit, nouvelle action, propositions de Claude, Marculus", async () => {
+  const plan = JSON.parse(readFileSync(join(dist, "plan-direct", "plan.json"), "utf8"));
+  const { ctx, page } = await ouvrir("/plan-direct/", { claude: `(${planSimule.toString()})(${JSON.stringify(plan)})` });
+  await page.waitForFunction(() => window.__watch && document.querySelectorAll("#vue-calendrier .pl__action").length === 11);
+  assert.equal(await page.isVisible("#btn-nouvelle"), true);
+  const appels = () => page.evaluate(() => window.__appels.filter((a) => a.type === "call" && a.tool !== "plan_actions" && a.tool !== "profils_experts"));
+
+  // Kanban : valider une proposition de Claude.
+  await page.click("#mode-expert");
+  await page.click("#onglet-kanban");
+  const carteClaude = page.locator(".pl__carte-k--claude").first();
+  const idClaude = await carteClaude.getAttribute("data-carte");
+  await carteClaude.locator("[data-transition='validee']").click();
+  await page.waitForFunction(() => window.__appels.some((a) => a.tool === "modifier_action"));
+  let c = (await appels()).at(-1);
+  assert.deepEqual([c.input.action_id, c.input.modifications.statut, c.input.attendu], [idClaude, "validee", plan.actions.find((a) => a.id === idClaude).version]);
+  await page.waitForFunction((id) => !document.querySelector(".pl__carte-k--claude[data-carte='" + id + "']"), idClaude);
+
+  // Fiche : seuls les champs changés partent, avec la version lue.
+  await page.click("#onglet-tableau");
+  await page.locator("#vue-tableau tbody tr").first().click();
+  await page.selectOption("#f-priorite", "basse");
+  await page.fill("#f-commentaire", "Attendre la fin de la nidification.");
+  await page.click("#btn-enregistrer");
+  await page.waitForFunction(() => window.__appels.filter((a) => a.tool === "modifier_action").length === 2);
+  c = (await appels()).at(-1);
+  assert.deepEqual(Object.keys(c.input.modifications).sort(), ["commentaire", "priorite"]);
+  await page.waitForFunction(() => /enregistrée/.test(document.getElementById("message").textContent));
+
+  // Conflit : la fiche montre la version actuelle et le dit.
+  await page.evaluate(() => { window.__conflit = true; });
+  await page.fill("#f-commentaire", "Autre note");
+  await page.click("#btn-enregistrer");
+  await page.waitForFunction(() => /alice/.test(document.getElementById("message-fiche").textContent));
+  assert.equal(await page.inputValue("#f-priorite"), "basse");
+  await page.evaluate(() => { window.__conflit = false; });
+  await page.click("#btn-fermer");
+
+  // Nouvelle action, saisie dans la vue.
+  await page.click("#btn-nouvelle");
+  await page.selectOption("#f-type", "autre");
+  assert.equal(await page.isVisible("#f-type-libre"), true);
+  await page.fill("#f-type-libre", "Mare");
+  await page.fill("#f-annee", "2029");
+  await page.click("#btn-enregistrer");
+  await page.waitForFunction(() => window.__appels.some((a) => a.tool === "ajouter_action"));
+  c = (await appels()).at(-1);
+  assert.equal(c.input.action.type_libre, "Mare");
+  assert.equal(c.input.action.annee, 2029);
+  assert.equal(c.input.action.source.origine, "vue");
+  await page.click("#btn-fermer");
+
+  // Propositions de Claude pour une unité : profil servi par le connecteur, une proposition hors règles écartée.
+  await page.locator("#carte path.leaflet-interactive").nth(5).click({ force: true });
+  await page.waitForSelector("#btn-claude");
+  assert.ok((await page.$$eval("#profil option", (o) => o.map((x) => x.textContent))).includes("Élu local"));
+  await page.selectOption("#profil", "elu_local");
+  await page.click("#btn-claude");
+  await page.waitForSelector(".pl__suggestion");
+  assert.equal(await page.$$eval(".pl__suggestion", (s) => s.length), 1);
+  assert.match(await page.textContent("#suggestions"), /1 proposition\(s\) hors des règles/);
+  assert.match(await page.evaluate(() => window.__consigne), /Tu parles à un élu/);
+  await capture(page, "plan-suggestions");
+  await page.click("[data-ajout]");
+  await page.waitForFunction(() => window.__appels.filter((a) => a.tool === "ajouter_action").length === 2);
+  c = (await appels()).at(-1);
+  assert.equal(c.input.action.source.origine, "claude");
+  assert.equal(c.input.action.statut, "proposee");
+  assert.equal(c.input.action.annee, 2030);
+
+  // Suppression avec confirmation.
+  await page.click("#btn-sans-filtre");
+  await page.locator("#vue-tableau tbody tr").first().click();
+  await page.click("#btn-supprimer");
+  await page.click("#btn-oui-suppr");
+  await page.waitForFunction(() => window.__appels.some((a) => a.tool === "supprimer_action"));
+
+  // Paquet Marculus : lien de téléchargement.
+  await page.click("#btn-marculus");
+  await page.waitForSelector("#message a[href='https://nemeton.test/telechargement/x/marculus.zip']");
+  await ctx.close();
+});
+
+await test("Plan : sombre, EN, téléphone 400 px, fiche en panneau bas", async () => {
+  const { ctx, page } = await ouvrir("/plan/", { theme: "dark", viewport: { width: 400, height: 860 } });
+  await page.waitForSelector("#carte path.leaflet-interactive");
+  await page.click("#lang-en");
+  assert.equal(await page.textContent("#mode-expert"), "Expert view");
+  await page.locator("#vue-calendrier .pl__action").first().click();
+  assert.equal(await page.isVisible("#fiche"), true);
+  const deborde = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+  assert.equal(deborde, false);
+  await capture(page, "plan-mobile-sombre");
+  await ctx.close();
 });
 
 await navigateur.close();

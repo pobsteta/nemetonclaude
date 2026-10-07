@@ -486,13 +486,28 @@
   });
 
   /* ---------------------------------------------- Demander à Claude */
+  // Profils experts : ceux de nemetonshiny, servis par le connecteur
+  // (profils_experts) ; à défaut, quatre profils intégrés à la vue.
   var PROFILS = ["gestionnaire", "elu", "proprietaire", "naturaliste"];
+  var profilsServeur = null;
+  function profils() {
+    return profilsServeur || PROFILS.map(function (p) { return { cle: p, libelle: NV.t("p_" + p), consigne: null }; });
+  }
+  function profilChoisi() {
+    var v = $("profil").value;
+    return profils().filter(function (p) { return p.cle === v; })[0] || profils()[0];
+  }
   function rendreProfils() {
     var cle = "nemeton-profil:" + (entete.project_id || "");
-    var courant = NV.stockage.lire(cle, "gestionnaire");
-    $("profil").innerHTML = PROFILS.map(function (p) {
-      return "<option value='" + p + "'" + (p === courant ? " selected" : "") + ">" + E(NV.t("p_" + p)) + "</option>";
+    var courant = NV.stockage.lire(cle, profilsServeur ? "generalist" : "gestionnaire");
+    $("profil").innerHTML = profils().map(function (p) {
+      return "<option value='" + E(p.cle) + "'" + (p.cle === courant ? " selected" : "") + ">" + E(p.libelle) + "</option>";
     }).join("");
+  }
+  function chargerProfils() {
+    if (!mcp) return;
+    NV.appeler(mcp, "profils_experts", { langue: NV.lang }, { cache: { staleTime: 300000 } })
+      .then(function (r) { if (r.profils && r.profils.length) { profilsServeur = r.profils; rendreProfils(); } }, function () { /* profils intégrés */ });
   }
   $("profil").addEventListener("change", function () { NV.stockage.ecrire("nemeton-profil:" + (entete.project_id || ""), this.value); });
   function majContexteQuestion() {
@@ -513,9 +528,11 @@
         familles: catalogue.map(function (x) { return { code: x.code, score: p[x.colonne] }; }),
         indicateurs: f.indicateurs.map(function (i) { return { code: i.code, libelle: labelInd(i), note: p[i.colonne_norm], statut: p[i.statut] || null }; }) } : null
     };
-    var consigne = (NV.lang === "en" ? "Answer in English" : "Réponds en français, en vouvoyant le lecteur") +
+    var profil = profilChoisi();
+    var consigne = (profil.consigne ? profil.consigne + "\n\n" : "") +
+      (NV.lang === "en" ? "Answer in English" : "Réponds en français, en vouvoyant le lecteur") +
       ". You assist a forest diagnosis made with nemeton (12 families, sub-indicators scored 0-100, NDP precision level, confidence φ). " +
-      "Reader profile: " + NV.t("p_" + $("profil").value) + ". Use only the data below; say when a value is missing and why (status), never treat it as zero. " +
+      "Reader profile: " + profil.libelle + ". Use only the data below; say when a value is missing and why (status), never treat it as zero. " +
       "Be concise (under 180 words), cite the indicator codes you rely on.\n\nDATA:\n" + JSON.stringify(contexte) + "\n\nQUESTION:\n" + question;
     var bloc = $("reponse"), texte = $("reponse-texte");
     bloc.hidden = false; texte.textContent = NV.t("reflexion");
@@ -625,7 +642,7 @@
       a.style.cssText = "position:absolute;z-index:900;left:12px;right:12px;bottom:22px;background:var(--nv-surface)";
     });
 
-  NV.capaciteNemeton().then(function (m) { mcp = m; $("btn-gpkg").hidden = !m; if (donnees) rendreFiche(); });
+  NV.capaciteNemeton().then(function (m) { mcp = m; $("btn-gpkg").hidden = !m; if (donnees) rendreFiche(); chargerProfils(); });
   NV.capacite("sample").then(function (s) { sample = s; $("bloc-claude").hidden = !s; });
   NV.capacite("downloads").then(function (d) { downloads = d; $("btn-csv").hidden = !d; });
   majLangue();

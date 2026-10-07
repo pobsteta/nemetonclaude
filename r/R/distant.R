@@ -71,10 +71,13 @@ config_distant <- function(url = Sys.getenv("NEMETON_CLAUDE_URL"),
 # cette liste et de .OUTILS_LECTURE est refuse a tous (garde-fou si
 # nemetonshiny ajoute un outil).
 .OUTILS_ECRITURE <- c("creer_projet", "lancer_calcul", "annuler_calcul",
-                      "generer_rapport", "exporter_gpkg")
+                      "generer_rapport", "exporter_gpkg",
+                      "ajouter_action", "modifier_action", "supprimer_action",
+                      "exporter_marculus")
 .OUTILS_LECTURE <- c("lister_projets", "resume_projet", "etat_calcul", "url_app",
                      "chercher_commune", "parcelles_commune", "vue_atlas",
-                     "contexte_carto", "detail_indicateur")
+                     "contexte_carto", "detail_indicateur",
+                     "plan_actions", "profils_experts")
 
 .outils_permis <- function(roles, config) {
   c(if (length(intersect(roles, c(config$roles_lecture, config$roles_ecriture)))) .OUTILS_LECTURE,
@@ -264,15 +267,22 @@ config_distant <- function(url = Sys.getenv("NEMETON_CLAUDE_URL"),
   .reponse(200L, list(jsonrpc = "2.0", id = id, error = list(code = code, message = message)))
 }
 
-# Contexte d'une requete authentifiee : dossiers propres a l'utilisateur en
-# mode isolation. Rend une fonction qui restaure l'etat precedent.
+# Contexte d'une requete authentifiee : identite et droit d'ecrire (pour
+# l'historique du plan d'actions et la vue), dossiers propres a
+# l'utilisateur en mode isolation. Rend une fonction qui restaure l'etat
+# precedent.
 .entrer_contexte <- function(utilisateur, config) {
-  if (!identical(config$isolation, "utilisateur")) return(function() invisible())
-  dossier <- gsub("[^A-Za-z0-9_-]", "_", utilisateur$sub)
-  avant <- options(
-    nemeton.app_options = utils::modifyList(getOption("nemeton.app_options", list()) %||% list(),
-                                            list(project_dir = file.path(config$racine_projets, dossier))),
-    nemetonclaude.dossier_vues = file.path(config$racine_vues, dossier))
+  nouvelles <- list(
+    nemetonclaude.utilisateur = utilisateur$nom %||% utilisateur$sub,
+    nemetonclaude.peut_ecrire = length(intersect(utilisateur$roles, config$roles_ecriture)) > 0)
+  if (identical(config$isolation, "utilisateur")) {
+    dossier <- gsub("[^A-Za-z0-9_-]", "_", utilisateur$sub)
+    nouvelles$nemeton.app_options <- utils::modifyList(
+      getOption("nemeton.app_options", list()) %||% list(),
+      list(project_dir = file.path(config$racine_projets, dossier)))
+    nouvelles$nemetonclaude.dossier_vues <- file.path(config$racine_vues, dossier)
+  }
+  avant <- do.call(options, nouvelles)
   function() options(avant)
 }
 
