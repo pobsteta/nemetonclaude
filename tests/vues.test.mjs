@@ -212,6 +212,44 @@ await test("Atlas : profils experts servis par le connecteur et passés à Claud
   await ctx.close();
 });
 
+await test("Atlas : GeoPackage zippé proposé comme le CSV, sinon lien du connecteur", async () => {
+  // « PK » + octets : le contenu importe peu, la vue ne fait que le relayer.
+  const simule = () => {
+    window.__appels = [];
+    window.__saves = [];
+    const mcp = {
+      listTools: () => Promise.resolve({ servers: [{ server: "nemeton", tools: [{ name: "exporter_gpkg" }] }] }),
+      callTool: (server, tool, input) => {
+        window.__appels.push({ tool, input });
+        if (tool !== "exporter_gpkg") return Promise.resolve({ payload: { ok: false, erreur: "non simulé" } });
+        return Promise.resolve({ payload: window.__sansZip
+          ? { ok: true, fichier: "/srv/p/resultats.gpkg", urls: { "/srv/p/resultats.gpkg": "https://exemple.test/telechargement/abc/resultats.gpkg" } }
+          : { ok: true, fichier: "/srv/p/resultats.gpkg", zip_nom: "resultats.zip", zip_taille: 4, zip_base64: btoa("PK\u0003\u0004") } });
+      }
+    };
+    const downloads = { save: (r) => { window.__saves.push(r); return Promise.resolve({ status: "saved" }); } };
+    window.claude = { use: (nom) => Promise.resolve(nom === "mcp" ? mcp : nom === "downloads" ? downloads : null) };
+  };
+  const { ctx, page } = await ouvrir("/atlas/", { claude: simule });
+  await page.waitForSelector("#btn-gpkg", { state: "visible" });
+  await page.click("#btn-gpkg");
+  await page.waitForFunction(() => window.__saves.length === 1);
+  const save = await page.evaluate(async () => {
+    const s = window.__saves[0];
+    return { filename: s.filename, octets: Array.from(new Uint8Array(await s.data.arrayBuffer())), entree: window.__appels.find((a) => a.tool === "exporter_gpkg").input };
+  });
+  assert.equal(save.filename, "resultats.zip");
+  assert.deepEqual(save.octets, [0x50, 0x4b, 3, 4]);
+  assert.equal(save.entree.zip, true);
+  await page.waitForFunction(() => /zip/.test(document.getElementById("statut-export").textContent));
+  // Sans contenu (ancien connecteur) : le lien temporaire du connecteur distant.
+  await page.evaluate(() => { window.__sansZip = true; });
+  await page.click("#btn-gpkg");
+  const lien = await page.waitForSelector("#statut-export a");
+  assert.equal(await lien.getAttribute("href"), "https://exemple.test/telechargement/abc/resultats.gpkg");
+  await ctx.close();
+});
+
 /* ------------------------------------------------------------ Calcul */
 // Capacité mcp simulée : un connecteur distant « nemeton », un suivi
 // (watchTool) piloté par le test via window.__emettre, et le journal des

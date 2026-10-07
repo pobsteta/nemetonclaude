@@ -135,3 +135,42 @@ test_that(".identites_ug nomme UGF n les unites qui gardent leur reference cadas
   expect_equal(.identites_ug("parcelle_x", "212000000A0036")$label, "212000000A0036")
   expect_equal(.ref_courte(c("212000000AB0007", "21200000AB0007", "libre")), c("212000000AB0007", "AB 7", "libre"))
 })
+
+test_that(".zip_base64 rend le fichier zippe en base64, ou signale qu'il est trop gros", {
+  dossier <- withr::local_tempdir()
+  f <- file.path(dossier, "resultats_x.gpkg")
+  writeBin(as.raw(rep(1:50, 40)), f)
+  z <- .zip_base64(f)
+  expect_equal(z$zip_nom, "resultats_x.zip")
+  expect_false(grepl("\n", z$zip_base64))
+  archive <- file.path(dossier, "lu.zip")
+  writeBin(openssl::base64_decode(z$zip_base64), archive)
+  expect_equal(zip::zip_list(archive)$filename, "resultats_x.gpkg")
+  expect_equal(file.size(archive), z$zip_taille)
+  gros <- .zip_base64(f, max_octets = 10)
+  expect_true(gros$zip_trop_gros)
+  expect_null(gros$zip_base64)
+})
+
+test_that("exporter_gpkg n'ajoute le zip qu'a la demande, et laisse passer les erreurs", {
+  dossier <- withr::local_tempdir()
+  f <- file.path(dossier, "resultats_p1.gpkg")
+  writeBin(as.raw(1:100), f)
+  reponse <- .json(list(ok = TRUE, projet = "p1", fichier = f))
+  local_mocked_bindings(.ns = function(nom) function(projet) {
+    if (projet == "inconnu") .json(list(ok = FALSE, erreur = "introuvable")) else reponse
+  })
+  expect_identical(exporter_gpkg_vue("p1"), reponse)
+  x <- jsonlite::fromJSON(exporter_gpkg_vue("p1", zip = TRUE))
+  expect_equal(x$fichier, f)
+  expect_equal(x$zip_nom, "resultats_p1.zip")
+  expect_true(nzchar(x$zip_base64))
+  expect_false(jsonlite::fromJSON(exporter_gpkg_vue("inconnu", zip = TRUE))$ok)
+})
+
+test_that("outils_mcp sert un seul exporter_gpkg, celui qui sait zipper", {
+  noms <- vapply(outils_mcp(), function(o) o@name, "")
+  expect_equal(sum(noms == "exporter_gpkg"), 1L)
+  o <- outils_mcp()[[which(noms == "exporter_gpkg")]]
+  expect_true("zip" %in% names(o@arguments@properties))
+})
