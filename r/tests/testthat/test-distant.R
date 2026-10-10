@@ -76,6 +76,14 @@ test_that("les droits suivent les roles", {
   expect_length(.outils_permis(c("offline_access", "uma_authorization"), cfg), 0)
 })
 
+test_that("chaque outil du connecteur est classe en lecture ou en ecriture", {
+  # Un outil ajoute par nemetonshiny et oublie ici serait refuse a tous a
+  # distance : le test le signale au lieu de le laisser passer inapercu.
+  noms <- vapply(outils_mcp(), function(o) o@name, "")
+  expect_setequal(noms, c(.OUTILS_LECTURE, .OUTILS_ECRITURE))
+  expect_true(all(c("appliquer_ugf", "croiser_onf") %in% .OUTILS_ECRITURE))
+})
+
 test_that("un lien signe sert son fichier, et seulement lui", {
   cfg <- config_test()
   f <- file.path(cfg$racine_vues, "atlas.geojson")

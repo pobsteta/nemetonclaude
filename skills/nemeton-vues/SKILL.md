@@ -32,7 +32,36 @@ Référence : `specs/BRIEF-visualisation-nemeton-claude.md`.
 | lance ou attend un calcul | **Calcul** (`vues/calcul/`) | `lancer_calcul`, `etat_calcul` (suivi depuis la vue), `annuler_calcul` |
 | veut planifier, valider ou partager des actions sylvicoles | **Plan d'actions** (`vues/plan/`) | `plan_actions`, `ajouter_action`, `modifier_action`, `supprimer_action`, `profils_experts`, `exporter_marculus` |
 | veut un rapport, un GeoPackage | conversation | `generer_rapport` (pièce officielle, PDF), `exporter_gpkg` (connecteur distant : lien `urls` ; avec `zip = true`, le GeoPackage zippé en base64, que la vue Atlas propose au téléchargement comme le CSV) |
-| veut éditer les unités de gestion | application nemetonshiny | `url_app` |
+| veut des UGF numérotées comme les parcelles forestières ONF | conversation | `croiser_onf`, puis `lancer_calcul` (voir « UGF depuis le parcellaire ONF ») |
+| veut éditer les unités de gestion | application nemetonshiny | `url_app` ; `appliquer_ugf` pour un découpage déjà prêt en fichier |
+
+## UGF depuis le parcellaire ONF
+
+En forêt publique, l'unité de gestion est la parcelle forestière ONF.
+`croiser_onf(projet, purger)` construit les UGF du projet à partir du
+parcellaire ONF recalé sur le cadastre, qui n'est jamais déformé : chaque UGF
+porte sa forêt et son n° de parcelle (`onf_foret_id`, `onf_parcelle`…).
+
+1. Demander s'il faut **retirer les parcelles hors régime forestier**
+   (`purger = true` : privées selon la DGFiP, couvertes par l'ONF sous le seuil
+   du projet, ou hors parcellaire ONF). Sans réponse, `purger` vaut le réglage
+   du projet. Retirer des parcelles change le projet : le dire avant d'appeler.
+2. `croiser_onf` prend environ 35 s, et plus au premier appel, qui télécharge
+   le fichier DGFiP une fois pour toutes. Prévenir l'utilisateur de l'attente.
+3. Résumer le retour : `n_ugf`, `n_parcelles`, `n_cad` (UGF hors ONF,
+   `cad~<idu>`), et la liste `ecartees` avec raison (`privee`, `couverture`,
+   `hors_onf`) et propriétaire. Une parcelle écartée à tort se réintègre dans
+   nemetonshiny (onglet Sélection) avant de recroiser.
+4. `indicateurs_perimes = true` : proposer `lancer_calcul`, puis l'Atlas.
+
+`appliquer_ugf(projet, fichier, remplacer)` remplace les UGF par celles d'un
+GeoPackage ou d'un GeoJSON de tènements **lisible par le serveur** (colonnes
+`idu` et `label_ugf`, `onf_*` facultatives). Rien n'est écrit si un IDU est
+inconnu ou si une parcelle n'est pas exactement pavée.
+
+Les réglages du croisement (couverture minimale, tolérance d'accrochage,
+seuils de rattachement) sont ceux du projet, dans nemetonshiny (Paramètres,
+bloc ONF).
 
 ## Parcours « créer son premier projet »
 
@@ -244,6 +273,10 @@ Les outils rendent `{"ok": false, "erreur", "classe", "candidats"}` :
 | `nemetonclaude_action_invalide` | relire le message (unité inconnue, type, année hors horizon) et corriger |
 | `nemetonclaude_conflit` | montrer à l'utilisateur la version actuelle (`candidats`) avant de réécrire |
 | `nemetonclaude_marculus_vide` | aucune action de martelage dans le plan : rien à exporter |
+| `nemetonshiny_onf_echec` | `croiser_onf` : source ONF, cadastre ou DGFiP injoignable, aucune forêt publique ou aucun recoupement ; le projet n'a pas changé |
+| `nemetonshiny_idu_inconnu` | `appliquer_ugf` : le fichier cite une parcelle absente du projet ; aucune parcelle n'est créée |
+| `nemetonshiny_pavage_invalide` | `appliquer_ugf` : les tènements ne pavent pas exactement les parcelles nommées ; le projet n'a pas changé |
+| `nemetonshiny_fichier_invalide` | `appliquer_ugf` : fichier introuvable, illisible ou sans `idu` / `label_ugf` |
 
 Connecteur distant : un outil d'écriture refusé (« réservé aux rôles … ») vient
 du rôle Keycloak du compte, pas de nemeton ; le dire à l'utilisateur et

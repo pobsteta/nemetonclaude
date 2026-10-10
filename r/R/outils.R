@@ -1,4 +1,4 @@
-# Declaration des outils MCP : les 8 outils de nemetonshiny, inchanges, plus
+# Declaration des outils MCP : les 10 outils de nemetonshiny, inchanges, plus
 # ceux du lot 1. On etend le serveur existant au lieu d'en ecrire un autre.
 
 .lecture_seule <- function() {
@@ -16,7 +16,8 @@
 #'
 #' @return A list of `ellmer::tool()` definitions: the tools of nemetonshiny
 #'   (`lister_projets`, `resume_projet`, `lancer_calcul`, `etat_calcul`,
-#'   `annuler_calcul`, `generer_rapport`, `exporter_gpkg`, `url_app`) and the
+#'   `annuler_calcul`, `generer_rapport`, `exporter_gpkg`, `url_app`,
+#'   `appliquer_ugf`, `croiser_onf`) and the
 #'   lot 1 tools (`chercher_commune`, `parcelles_commune`, `creer_projet`,
 #'   `vue_atlas`, `contexte_carto`, `detail_indicateur`).
 #' @export
