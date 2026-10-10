@@ -1,3 +1,8 @@
+# nemetonclaude 0.5.0 (2026-10-10)
+
+- Expose croiser_onf et appliquer_ugf (UGF depuis le parcellaire ONF) (#12)
+- Retire un fichier de diagnostic testthat commité par erreur (#11)
+
 # nemetonclaude 0.4.0 (2026-10-07)
 
 - Propose le GeoPackage au téléchargement dans l'Atlas, comme le CSV (#10)
