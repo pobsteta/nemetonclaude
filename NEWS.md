@@ -1,3 +1,7 @@
+# nemetonclaude 0.6.0 (2026-10-12)
+
+- Déclare le dépôt comme marketplace Claude Code (installation durable du plugin) (#13)
+
 # nemetonclaude 0.5.0 (2026-10-10)
 
 - Expose croiser_onf et appliquer_ugf (UGF depuis le parcellaire ONF) (#12)
