@@ -1,3 +1,8 @@
+# nemetonclaude 0.7.0 (2026-10-12)
+
+- Atlas : relit les résultats au connecteur à l'ouverture, sans republication (#15)
+- Skill nemeton-vues : réécrire le <title> de la copie avant de publier (#14)
+
 # nemetonclaude 0.6.0 (2026-10-12)
 
 - Déclare le dépôt comme marketplace Claude Code (installation durable du plugin) (#13)
