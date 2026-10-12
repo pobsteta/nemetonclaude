@@ -1,3 +1,7 @@
+# nemetonclaude 0.7.1 (2026-10-12)
+
+- Atlas : calcule les notes des sous-indicateurs quand nemetonshiny ne les enregistre pas (#16)
+
 # nemetonclaude 0.7.0 (2026-10-12)
 
 - Atlas : relit les résultats au connecteur à l'ouverture, sans republication (#15)
