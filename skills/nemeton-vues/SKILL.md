@@ -192,7 +192,10 @@ Chaque vue = sa page (`vues/<vue>/index.html`) + le moteur commun
   Sans modèle, publier les deux fichiers du moteur directement depuis
   `vues/moteur/`.
 - Titre : le nom du projet ou de la commune (« Atlas · Forêt de Velars »,
-  « Sélection · Velars-sur-Ouche »).
+  « Sélection · Velars-sur-Ouche »). La balise `<title>` de la page
+  l'emporte sur le titre passé à la publication : **réécrire `<title>` dans
+  la copie** du scratchpad avant de publier, sinon toutes les vues portent le
+  même nom dans la galerie.
 - Les fichiers de données ne transitent jamais par la conversation.
   - **Connecteur local** : passer les chemins rendus par les outils.
   - **Connecteur distant** : les chemins sont ceux du serveur. Chaque réponse
