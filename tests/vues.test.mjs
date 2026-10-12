@@ -38,6 +38,14 @@ const planExemple = JSON.parse(readFileSync(join(racine, "vues/exemples/plan/pla
 writeFileSync(join(planDirect, "plan.json"), JSON.stringify({ ...planExemple, exemple: false, peut_ecrire: true }));
 for (const f of ["plan.geojson", "contexte.geojson"]) writeFileSync(join(planDirect, f), readFileSync(join(racine, "vues/exemples/plan", f)));
 execFileSync("node", [join(racine, "outils/assembler-vue.mjs"), "plan", planDirect, join(dist, "plan-direct")]);
+// Vue Atlas d'un vrai projet (pas un exemple), rafraîchie par le connecteur.
+const atlasDirect = join(dist, "_donnees-atlas-direct");
+mkdirSync(atlasDirect, { recursive: true });
+const atlasExemple = JSON.parse(readFileSync(join(racine, "vues/exemples/atlas/atlas.geojson"), "utf8"));
+atlasExemple.nemeton = { ...atlasExemple.nemeton, exemple: false, project_id: "p-atlas", name: "Forêt publiée" };
+writeFileSync(join(atlasDirect, "atlas.geojson"), JSON.stringify(atlasExemple));
+writeFileSync(join(atlasDirect, "contexte.geojson"), readFileSync(join(racine, "vues/exemples/atlas/contexte.geojson")));
+execFileSync("node", [join(racine, "outils/assembler-vue.mjs"), "atlas", atlasDirect, join(dist, "atlas-direct")]);
 
 const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".geojson": "application/geo+json" };
 const serveur = createServer((req, res) => {
@@ -53,7 +61,7 @@ const erreurs = [];
 async function ouvrir(chemin, options = {}) {
   const ctx = await navigateur.newContext({ viewport: options.viewport || { width: 1360, height: 860 }, colorScheme: options.theme || "light" });
   const page = await ctx.newPage();
-  if (options.claude) await page.addInitScript(options.claude);
+  if (options.claude) await page.addInitScript(options.claude, options.claudeArg);
   await page.route("https://cdnjs.cloudflare.com/**", (r) => r.fulfill({ path: leafletJs, contentType: "text/javascript" }));
   await page.route("https://fonts.**", (r) => r.abort());
   page.on("pageerror", (e) => erreurs.push(`${chemin}: ${e.message}`));
@@ -209,6 +217,47 @@ await test("Atlas : profils experts servis par le connecteur et passés à Claud
   assert.match(consigne, /^Tu es naturaliste, attentif aux habitats\./);
   assert.match(consigne, /Reader profile: Naturaliste/);
   await page.waitForFunction(() => /Réponse simulée/.test(document.getElementById("reponse-texte").textContent));
+  await ctx.close();
+});
+
+await test("Atlas : résultats plus récents relus au connecteur, sans republication", async () => {
+  // addInitScript sérialise la fonction : l'option arrive en argument.
+  const simule = (recent) => {
+    window.__appels = [];
+    window.__recent = recent;
+    const mcp = {
+      listTools: () => Promise.resolve({ servers: [{ server: "nemeton", tools: [{ name: "vue_atlas" }] }] }),
+      callTool: (server, tool, input, options) => {
+        window.__appels.push({ tool, input, options });
+        if (tool !== "vue_atlas") return Promise.resolve({ payload: { ok: false, erreur: "non simulé" } });
+        return fetch("atlas.geojson").then((r) => r.json()).then((gj) => {
+          gj.nemeton = { ...gj.nemeton, name: "Forêt recalculée", updated_at: window.__recent ? "2026-10-12 08:00:00" : gj.nemeton.updated_at };
+          return { payload: { ok: true, project_id: gj.nemeton.project_id, geojson: gj } };
+        });
+      }
+    };
+    window.claude = { use: (nom) => Promise.resolve(nom === "mcp" ? mcp : null) };
+  };
+  // Résultats plus récents : la vue se redessine et le dit.
+  let { ctx, page } = await ouvrir("/atlas-direct/", { claude: simule, claudeArg: true });
+  await page.waitForFunction(() => document.getElementById("titre").textContent === "Forêt recalculée");
+  const appel = await page.evaluate(() => window.__appels.find((a) => a.tool === "vue_atlas"));
+  assert.equal(appel.input.projet, "p-atlas");
+  assert.equal(appel.input.inclure_geojson, true);
+  assert.equal(appel.options.cache.refresh, true);
+  await page.waitForFunction(() => /mis à jour depuis le serveur/.test(document.getElementById("statut-export").textContent));
+  assert.equal(await page.locator("#carte path.leaflet-interactive").count() > 0, true);
+  await ctx.close();
+  // Mêmes résultats : rien ne change.
+  ({ ctx, page } = await ouvrir("/atlas-direct/", { claude: simule, claudeArg: false }));
+  await page.waitForFunction(() => window.__appels && window.__appels.some((a) => a.tool === "vue_atlas"));
+  await page.waitForTimeout(300);
+  assert.equal(await page.textContent("#titre"), "Forêt publiée");
+  await ctx.close();
+  // Données d'exemple : jamais rafraîchies.
+  ({ ctx, page } = await ouvrir("/atlas/", { claude: simule, claudeArg: true }));
+  await page.waitForTimeout(500);
+  assert.equal(await page.evaluate(() => window.__appels.some((a) => a.tool === "vue_atlas")), false);
   await ctx.close();
 });
 

@@ -120,7 +120,14 @@ bloc ONF).
 3. Publier la vue Atlas avec :
    - `atlas.geojson` ← `fichier` de `vue_atlas`
    - `contexte.geojson` ← `fichier` de `contexte_carto` (si présent)
-   - Capacités : `{"mcp": {"servers": [{"server": <serveur nemeton>, "tools": ["detail_indicateur", "exporter_gpkg", "profils_experts"]}]}, "sample": {}, "downloads": true}`.
+   - Capacités : `{"mcp": {"servers": [{"server": <serveur nemeton>, "tools": ["vue_atlas", "detail_indicateur", "exporter_gpkg", "profils_experts"]}]}, "sample": {}, "downloads": true}`.
+   - **Rafraîchissement** : à l'ouverture, la vue redemande `vue_atlas` au
+     serveur nemeton qui répond (application de bureau, ou connecteur
+     distant dans un navigateur). Si les résultats sont plus récents que
+     ceux publiés, elle se redessine. Après un recalcul, il n'est donc pas
+     nécessaire de republier pour qui a un serveur nemeton. Republier reste
+     nécessaire pour les autres lecteurs (lien partagé sans connecteur).
+     `vue_atlas` doit figurer dans `tools`.
 4. Résumer en deux ou trois phrases ce que montre l'Atlas (score global,
    familles les plus fortes et les plus faibles, valeurs manquantes) et donner
    le lien.

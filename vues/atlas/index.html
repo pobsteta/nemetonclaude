@@ -257,6 +257,7 @@
       gpkg_ok_zip: "GeoPackage (zip) proposé au téléchargement.", gpkg_refus: "Le GeoPackage n'a pas pu être téléchargé ici.",
       gpkg_lien: "Télécharger le GeoPackage (lien temporaire)", gpkg_trop_gros: "GeoPackage trop volumineux pour la vue, écrit sur le serveur : {f}",
       erreur_donnees: "Les données de l'Atlas n'ont pas pu être chargées : {message}",
+      maj_direct: "Résultats mis à jour depuis le serveur nemeton (calcul du {date}).",
       erreur_ia: "Claude n'a pas pu répondre : {message}",
       biv_titre: "{a} × {b}", famille_titre: "{f} · score 0–100",
       p_gestionnaire: "Gestionnaire forestier", p_elu: "Élu local", p_proprietaire: "Propriétaire", p_naturaliste: "Naturaliste"
@@ -280,6 +281,7 @@
       gpkg_ok_zip: "GeoPackage (zip) offered for download.", gpkg_refus: "The GeoPackage could not be downloaded here.",
       gpkg_lien: "Download the GeoPackage (temporary link)", gpkg_trop_gros: "GeoPackage too large for the view, written on the server: {f}",
       erreur_donnees: "The atlas data could not be loaded: {message}",
+      maj_direct: "Results refreshed from the nemeton server (computed {date}).",
       erreur_ia: "Claude could not answer: {message}",
       biv_titre: "{a} × {b}", famille_titre: "{f} · score 0–100",
       p_gestionnaire: "Forest manager", p_elu: "Local elected official", p_proprietaire: "Owner", p_naturaliste: "Naturalist"
@@ -627,38 +629,62 @@
   $("lang-en").addEventListener("click", function () { NV.changerLangue("en"); majLangue(); });
 
   /* ---------------------------------------------- chargement */
+  // Les données publiées avec la vue s'affichent d'abord. Si un serveur
+  // nemeton répond (application de bureau, ou connecteur distant dans un
+  // navigateur), la vue lui redemande ensuite les résultats : après un
+  // nouveau calcul, elle se met à jour sans être republiée.
+  var coucheUG = null, rafraichie = false;
+  function afficher(d, premier) {
+    if (!d || !d.features) throw new Error("atlas.geojson");
+    donnees = d;
+    entete = donnees.nemeton || {};
+    catalogue = entete.catalogue || [];
+    if (!fam(famille)) famille = catalogue.length ? catalogue[0].code : "C";
+    if (!fam(bivA)) bivA = catalogue[0].code;
+    if (!fam(bivB)) bivB = catalogue[1 % catalogue.length].code;
+    opaciteConfiance = entete.confidence != null ? 0.35 + 0.55 * Math.max(0, Math.min(1, entete.confidence)) : 0.8;
+
+    if (coucheUG) { carte.removeLayer(coucheUG); couches.clear(); props.clear(); }
+    var gj = coucheUG = L.geoJSON(donnees, {
+      style: function (f) { return style(f.properties); },
+      onEachFeature: function (f, c) {
+        var p = f.properties;
+        couches.set(p.ug_id, c); props.set(p.ug_id, p);
+        c.bindTooltip(function () {
+          var v = bivarie ? null : p[fam(famille).colonne];
+          return "<strong>" + E(p.label) + "</strong>" + (p.groupe ? "<br>" + E(p.groupe) : "") +
+            (NV.parcellesUG(p) ? "<br><span class='nv-muet'>" + E(NV.parcellesUG(p)) + "</span>" : "") + "<br>" +
+            (bivarie ? E(fam(bivA).code) + " <span class='nv-num'>" + NV.nombre(p[fam(bivA).colonne], 0) + "</span> · " +
+              E(fam(bivB).code) + " <span class='nv-num'>" + NV.nombre(p[fam(bivB).colonne], 0) + "</span>"
+              : E(fam(famille).code) + " <span class='nv-num'>" + (v == null ? E(NV.t("manquant")) : NV.nombre(v, 0)) + "</span>");
+        }, { className: "nv-infobulle", sticky: true, direction: "top", offset: [0, -6] });
+        c.on("click", function () { choisir(p.ug_id, false); });
+      }
+    }).addTo(carte);
+    if (premier) carte.fitBounds(gj.getBounds(), { padding: [24, 24] });
+    NV.motifHachures(carte);
+    recolorer();
+    majLangue();
+  }
+  function rafraichirResultats() {
+    if (rafraichie || !mcp || !donnees || entete.exemple || !entete.project_id) return;
+    rafraichie = true;
+    NV.appeler(mcp, "vue_atlas", { projet: entete.project_id, langue: NV.lang, inclure_geojson: true },
+               { cache: { refresh: true } })
+      .then(function (r) {
+        var gj = r && r.geojson, neuf = gj && gj.nemeton && gj.nemeton.updated_at;
+        var horodate = function (x) { return String(x || "").replace("T", " "); };
+        if (!gj || !gj.features || !neuf || !(horodate(neuf) > horodate(entete.updated_at))) return;
+        afficher(gj, false);
+        NV.annoncer($("statut-export"), NV.t("maj_direct", { date: NV.date(neuf) }), 0);
+      })
+      .catch(function () { /* les données publiées restent affichées */ });
+  }
   Promise.all([NV.charger("atlas.geojson"), NV.charger("contexte.geojson").catch(function () { return null; })])
     .then(function (r) {
-      donnees = r[0];
-      if (!donnees || !donnees.features) throw new Error("atlas.geojson");
-      entete = donnees.nemeton || {};
-      catalogue = entete.catalogue || [];
-      if (!fam(famille)) famille = catalogue.length ? catalogue[0].code : "C";
-      if (!fam(bivA)) bivA = catalogue[0].code;
-      if (!fam(bivB)) bivB = catalogue[1 % catalogue.length].code;
-      opaciteConfiance = entete.confidence != null ? 0.35 + 0.55 * Math.max(0, Math.min(1, entete.confidence)) : 0.8;
-
       if (r[1]) NV.repere(carte, r[1], NV.styleContexte, "contexte");
-      var gj = L.geoJSON(donnees, {
-        style: function (f) { return style(f.properties); },
-        onEachFeature: function (f, c) {
-          var p = f.properties;
-          couches.set(p.ug_id, c); props.set(p.ug_id, p);
-          c.bindTooltip(function () {
-            var v = bivarie ? null : p[fam(famille).colonne];
-            return "<strong>" + E(p.label) + "</strong>" + (p.groupe ? "<br>" + E(p.groupe) : "") +
-              (NV.parcellesUG(p) ? "<br><span class='nv-muet'>" + E(NV.parcellesUG(p)) + "</span>" : "") + "<br>" +
-              (bivarie ? E(fam(bivA).code) + " <span class='nv-num'>" + NV.nombre(p[fam(bivA).colonne], 0) + "</span> · " +
-                E(fam(bivB).code) + " <span class='nv-num'>" + NV.nombre(p[fam(bivB).colonne], 0) + "</span>"
-                : E(fam(famille).code) + " <span class='nv-num'>" + (v == null ? E(NV.t("manquant")) : NV.nombre(v, 0)) + "</span>");
-          }, { className: "nv-infobulle", sticky: true, direction: "top", offset: [0, -6] });
-          c.on("click", function () { choisir(p.ug_id, false); });
-        }
-      }).addTo(carte);
-      carte.fitBounds(gj.getBounds(), { padding: [24, 24] });
-      NV.motifHachures(carte);
-      recolorer();
-      majLangue();
+      afficher(r[0], true);
+      rafraichirResultats();
     })
     .catch(function (e) {
       var a = document.createElement("p");
@@ -668,7 +694,7 @@
       a.style.cssText = "position:absolute;z-index:900;left:12px;right:12px;bottom:22px;background:var(--nv-surface)";
     });
 
-  NV.capaciteNemeton().then(function (m) { mcp = m; $("btn-gpkg").hidden = !m; if (donnees) rendreFiche(); chargerProfils(); });
+  NV.capaciteNemeton().then(function (m) { mcp = m; $("btn-gpkg").hidden = !m; if (donnees) rendreFiche(); chargerProfils(); rafraichirResultats(); });
   NV.capacite("sample").then(function (s) { sample = s; $("bloc-claude").hidden = !s; });
   NV.capacite("downloads").then(function (d) { downloads = d; $("btn-csv").hidden = !d; });
   majLangue();
