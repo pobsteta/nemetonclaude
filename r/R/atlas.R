@@ -33,6 +33,26 @@
   })
 }
 
+# Notes 0-100 des sous-indicateurs (`indicateur_*_norm`). nemetonshiny ne
+# les enregistre pas toujours : les completer ici avec la normalisation du
+# coeur (`nemeton::normalize_indicator()`, bornes absolues par indicateur,
+# celle qu'utilise `create_family_index()`), le statut de l'indicateur
+# precisant parfois l'unite (P2). Seuls les indicateurs declares par le coeur
+# recoivent une note : un indicateur inconnu serait rendu brut, deguise en note.
+.avec_notes <- function(df) {
+  cols <- grep("^indicateur_", names(df), value = TRUE)
+  cols <- setdiff(cols[!grepl("_norm$", cols)], sub("_norm$", "", grep("_norm$", names(df), value = TRUE)))
+  connus <- tryCatch(as.character(nemeton::list_indicators()), error = function(e) character())
+  for (cc in intersect(cols, connus)) {
+    st <- paste0(".", sub("^indicateur_([a-z][0-9]+)_.*$", "\\1", cc), "_status")
+    n <- tryCatch(nemeton::normalize_indicator(cc, suppressWarnings(as.numeric(df[[cc]])),
+                                               statut = if (st %in% names(df)) df[[st]]),
+                  error = function(e) NULL)
+    if (length(n) == nrow(df)) df[[paste0(cc, "_norm")]] <- as.numeric(n)
+  }
+  df
+}
+
 #' Properties of the Atlas features (pure function, tested)
 #'
 #' @param df data.frame without geometry, one row per management unit.
@@ -128,7 +148,7 @@ vue_atlas <- function(projet, langue = "fr", tolerance_m = 1, bruts = FALSE,
              "nemetonshiny_sans_indicateurs")
     }
     fam <- lu$familles
-    df <- sf::st_drop_geometry(fam)
+    df <- .avec_notes(sf::st_drop_geometry(fam))
     props <- .avec_identites(.proprietes_atlas(df, bruts = bruts), lu$projet, df$n_tenements)
     x <- sf::st_sf(props, geometry = sf::st_geometry(fam))
     insee <- tryCatch(as.character(lu$projet$parcels$code_insee[1]), error = function(e) NA)
@@ -171,7 +191,7 @@ detail_indicateur <- function(projet, ug, code, langue = "fr") {
     lu <- .lire_projet(id, langue)
     df <- lu$familles %||% lu$indicateurs
     if (is.null(df)) .abort("Projet {.val {id}} : aucun indicateur calcul\u00e9.", "nemetonshiny_sans_indicateurs")
-    df <- sf::st_drop_geometry(df)
+    df <- .avec_notes(sf::st_drop_geometry(df))
     ligne <- which(as.character(df$ug_id) == as.character(ug))
     if (!length(ligne) && "label" %in% names(df)) ligne <- which(df$label == ug)
     if (!length(ligne)) {

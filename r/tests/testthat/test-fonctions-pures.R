@@ -82,6 +82,22 @@ test_that(".proprietes_atlas suit le contrat de donnees", {
   expect_equal(.proprietes_atlas(df, bruts = TRUE)$indicateur_c1_biomasse, c(120.5, 80))
 })
 
+test_that(".avec_notes complete les notes absentes avec la normalisation du coeur", {
+  df <- data.frame(
+    indicateur_c1_biomasse = c(120.5, NA),
+    indicateur_b1_protection = c(10, 20),
+    indicateur_b1_protection_norm = c(1, 2),
+    indicateur_zz_inconnu = c(5, 6),
+    check.names = FALSE
+  )
+  n <- .avec_notes(df)
+  expect_equal(n$indicateur_c1_biomasse_norm,
+               as.numeric(nemeton::normalize_indicator("indicateur_c1_biomasse", c(120.5, NA))))
+  expect_true(is.na(n$indicateur_c1_biomasse_norm[2]))
+  expect_equal(n$indicateur_b1_protection_norm, c(1, 2))
+  expect_false("indicateur_zz_inconnu_norm" %in% names(n))
+})
+
 test_that(".mcp_call rend ok:true ou une erreur classee lisible", {
   ok <- jsonlite::fromJSON(.mcp_call(list(a = 1)))
   expect_true(ok$ok)
