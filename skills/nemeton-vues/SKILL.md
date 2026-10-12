@@ -170,6 +170,18 @@ le plan ne change pas. Le retour du martelage s'importe dans nemetonshiny.
 Chaque vue = sa page (`vues/<vue>/index.html`) + le moteur commun
 (`nemeton-view.js`, `nemeton-view.css`) + ses données.
 
+- **Où sont les fichiers** : les chemins `vues/…` partent de la racine du
+  plugin, deux niveaux au-dessus du dossier de ce skill
+  (`<dossier du skill>/../../vues/`). Installé depuis une marketplace, le
+  plugin vit dans `~/.claude/plugins/…`, pas dans le répertoire de travail.
+- **Copier avant de publier** : l'outil Artifact ne publie que des fichiers
+  du répertoire de travail ou du scratchpad. Copier la page, le moteur et les
+  fichiers rendus par les outils (écrits sous `~/.cache/R/nemetonclaude/`)
+  dans un dossier du scratchpad propre à la vue (par exemple
+  `<scratchpad>/atlas-<projet>/`), puis publier depuis ce dossier. Pour
+  mettre la vue à jour, recopier les données au même endroit et republier le
+  même fichier : l'URL ne change pas.
+
 - **Premier usage** : publier un artéfact modèle « Moteur nemeton » qui porte
   `nemeton-view.js` et `nemeton-view.css` (fichiers de `vues/moteur/`), et
   noter son URL.
