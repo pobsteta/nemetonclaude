@@ -1,0 +1,19 @@
+{
+  "name": "nemetonclaude",
+  "owner": {
+    "name": "Pascal Obstetar",
+    "email": "pascal.obstetar@gmail.com"
+  },
+  "metadata": {
+    "description": "Plugin nemeton pour Claude Code : diagnostic forestier, connecteur MCP (R) et vues interactives."
+  },
+  "plugins": [
+    {
+      "name": "nemeton",
+      "source": "./",
+      "description": "Diagnostic forestier nemeton dans Claude : connecteur MCP (R) et vues interactives publiées en artéfacts (Sélection des parcelles, Atlas du projet).",
+      "category": "productivity",
+      "homepage": "https://github.com/pobsteta/nemetonclaude"
+    }
+  ]
+}

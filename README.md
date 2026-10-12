@@ -54,6 +54,22 @@ serveur doit tourner dans une locale UTF-8.
 
 ### Plugin Claude Code
 
+Le dépôt est aussi une marketplace Claude Code. Installation durable, une
+fois le connecteur R installé :
+
+```bash
+claude plugin marketplace add pobsteta/nemetonclaude
+claude plugin install nemeton@nemetonclaude --scope user   # ou project, local
+```
+
+Dans Claude Code, on peut aussi taper
+`/plugin install nemeton --marketplace pobsteta/nemetonclaude` (Claude Code
+2.1.275 ou plus). Les mises à jour se récupèrent par
+`claude plugin marketplace update nemetonclaude`, puis
+`claude plugin update nemeton@nemetonclaude`.
+
+Pour essayer le plugin sans l'installer, ou pour le développer :
+
 ```bash
 claude --plugin-dir <chemin de ce dépôt>   # charge le plugin pour la session
 ```
